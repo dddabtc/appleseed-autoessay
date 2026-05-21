@@ -1,0 +1,87 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    command: ["uvicorn", "autoessay.main:app", "--host", "0.0.0.0", "--port", "8017", "--reload"]
+    environment:
+      AUTOESSAY_ENV: dev
+      AUTOESSAY_BASE_URL: http://localhost:3017
+      AUTOESSAY_DATA_DIR: /data
+      AUTOESSAY_DOMAIN_DIR: /app/domains
+      DATABASE_URL: sqlite:////data/autoessay.sqlite3
+      REDIS_URL: redis://redis:6379/0
+      ONE_API_BASE_URL: http://one-api.local
+      ONE_API_TOKEN: dev-one-api-token-placeholder
+      APPLESEED_MEMORY_URL: http://memory.local
+      APPLESEED_MEMORY_TOKEN: ""
+      AUTOESSAY_MEMORY_READ: "0"
+      AUTOESSAY_SESSION_SECRET: dev-session-secret-placeholder
+      AUTOESSAY_AUTH_BYPASS: "1"
+      CNKI_API_BASE_URL: http://localhost.com:6001/api/search
+      AUTOESSAY_CNKI_STUB: "0"
+      AUTOESSAY_LOCAL_DEDUP_STUB: "0"
+      LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:8017:8017"
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./backend/alembic:/app/backend/alembic
+      - ./domains:/app/domains
+      - autoessay-dev-data:/data
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    command: ["python", "-m", "autoessay.worker"]
+    environment:
+      AUTOESSAY_ENV: dev
+      AUTOESSAY_DATA_DIR: /data
+      AUTOESSAY_DOMAIN_DIR: /app/domains
+      DATABASE_URL: sqlite:////data/autoessay.sqlite3
+      REDIS_URL: redis://redis:6379/0
+      ONE_API_BASE_URL: http://one-api.local
+      ONE_API_TOKEN: dev-one-api-token-placeholder
+      APPLESEED_MEMORY_URL: http://memory.local
+      APPLESEED_MEMORY_TOKEN: ""
+      AUTOESSAY_MEMORY_READ: "0"
+      AUTOESSAY_SESSION_SECRET: dev-session-secret-placeholder
+      AUTOESSAY_AUTH_BYPASS: "1"
+      CNKI_API_BASE_URL: http://localhost.com:6001/api/search
+      AUTOESSAY_CNKI_STUB: "0"
+      AUTOESSAY_LOCAL_DEDUP_STUB: "0"
+      LOG_LEVEL: INFO
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./domains:/app/domains
+      - autoessay-dev-data:/data
+    depends_on:
+      - redis
+
+  frontend:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8017
+    ports:
+      - "127.0.0.1:3017:3000"
+    volumes:
+      - ./frontend:/app
+      - autoessay-dev-node-modules:/app/node_modules
+    depends_on:
+      - api
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - autoessay-dev-redis:/data
+
+volumes:
+  autoessay-dev-data:
+  autoessay-dev-node-modules:
+  autoessay-dev-redis:

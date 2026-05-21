@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: appleseed-guardrails
+        name: Appleseed guardrails denylist
+        entry: scripts/guardrails-secret-scan.sh
+        language: system
+        pass_filenames: false
+      - id: gitleaks-no-git
+        name: gitleaks detect --no-git
+        entry: gitleaks detect --source . --no-git --redact
+        language: system
+        pass_filenames: false
+      - id: trufflehog-verified
+        name: trufflehog verified filesystem scan
+        entry: trufflehog filesystem . --only-verified --no-update
+        language: system
+        pass_filenames: false

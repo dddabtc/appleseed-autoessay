@@ -1,0 +1,40 @@
+{
+  "schema_version": "ars_vendor_manifest_v1",
+  "upstream": {
+    "repository": "https://github.com/Imbad0202/academic-research-skills",
+    "commit": "be49a42940332e75a11287ac89767d0df6d02019",
+    "commit_date": "2026-05-19T10:48:05+08:00"
+  },
+  "vendored_at": "2026-05-19",
+  "selection": {
+    "reason": "Required by autoessay.experiments.abc_generator._load_ars_full_mode_prompt for express mode.",
+    "policy": "Only the files read by the express ARS prompt loader are vendored."
+  },
+  "files": [
+    {
+      "path": "academic-paper/SKILL.md",
+      "sha256": "2578aaf434336672071558ac2a5872fe998e48f7c610510723f3b7ec78fe3aae",
+      "bytes": 34966
+    },
+    {
+      "path": "academic-paper/agents/intake_agent.md",
+      "sha256": "8f1c3331d4bf506164e6071ed91ec64fae10dc3648e3b78c0daab9065156143f",
+      "bytes": 10372
+    },
+    {
+      "path": "academic-paper/agents/structure_architect_agent.md",
+      "sha256": "bff8983d3817c19364351b554c08a6934a39264523d26e8757365f56e21a646d",
+      "bytes": 16187
+    },
+    {
+      "path": "academic-paper/agents/draft_writer_agent.md",
+      "sha256": "9fc8446d9ba753969be00fd19494e167cd0ca78a278b1abe0b2bdcc526c41d30",
+      "bytes": 37653
+    },
+    {
+      "path": "shared/contracts/writer/full.json",
+      "sha256": "bbfa682e31c8c7ca82326546d9a0c9c8c786c65f5a98c85f534709eeedadc4f5",
+      "bytes": 3198
+    }
+  ]
+}

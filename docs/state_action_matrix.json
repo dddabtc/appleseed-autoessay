@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "notes": [
+    "Machine-readable contract for workspace phase actions, backend endpoints, state guards, and stable UI testids.",
+    "UI actions may add stricter client-side readiness checks; backend endpoints remain authoritative.",
+    "Generic FAILED_* to USER_* transitions are intentionally blocked. Recovery must use force-approve or a phase-specific retry endpoint."
+  ],
+  "failure_states": [
+    "FAILED_FIXABLE",
+    "FAILED_NEEDS_USER",
+    "FAILED_VENDOR",
+    "FAILED_POLICY"
+  ],
+  "actions": [
+    {
+      "id": "start_proposal",
+      "label": "Start proposal drafting",
+      "kind": "phase_start",
+      "phase": "proposal",
+      "source_states": ["DOMAIN_LOADED", "USER_PROPOSAL_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/proposal"
+      },
+      "expected_running_states": ["PROPOSAL_DRAFTING"],
+      "ui_source_states": ["DOMAIN_LOADED"],
+      "ui_keys": ["proposal"],
+      "ui_testids": ["phase-action-proposal"]
+    },
+    {
+      "id": "start_express_generation",
+      "label": "Start or regenerate Express manuscript",
+      "kind": "phase_start",
+      "phase": "express",
+      "source_states": ["DOMAIN_LOADED", "EXPRESS_FAILED"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/proposal"
+      },
+      "expected_running_states": ["EXPRESS_RUNNING"],
+      "ui_source_states": ["DOMAIN_LOADED", "EXPRESS_FAILED"],
+      "ui_keys": ["express-start", "express-regenerate"],
+      "ui_testids": ["phase-action-express-start", "phase-action-express-regenerate"],
+      "guards": ["run.mode == express"],
+      "notes": ["Express uses the proposal endpoint dispatcher but does not enter deep phase preview or review-gate UI."]
+    },
+    {
+      "id": "accept_proposal_start_scout",
+      "label": "Accept proposal and start Scout",
+      "kind": "checkpoint_then_phase_start",
+      "phase": "scout",
+      "source_states": ["USER_PROPOSAL_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/checkpoints/{checkpoint_type}",
+        "params": {
+          "checkpoint_type": "USER_PROPOSAL_REVIEW"
+        }
+      },
+      "expected_running_states": ["SCOUT_RUNNING"],
+      "ui_source_states": ["USER_PROPOSAL_REVIEW"],
+      "ui_keys": ["proposal-accept"],
+      "ui_testids": ["phase-action-proposal-accept", "proposal-accept-button"]
+    },
+    {
+      "id": "start_scout",
+      "label": "Start Scout directly",
+      "kind": "phase_start",
+      "phase": "scout",
+      "source_states": ["DOMAIN_LOADED", "USER_PROPOSAL_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/scout"
+      },
+      "expected_running_states": ["SCOUT_RUNNING"],
+      "ui_source_states": [],
+      "ui_keys": [],
+      "ui_testids": [],
+      "notes": ["Used by proposal-less runs and backend retry dispatch; proposal acceptance is the primary visible UI path."]
+    },
+    {
+      "id": "start_curator",
+      "label": "Start curator after search review",
+      "kind": "phase_start",
+      "phase": "curator",
+      "source_states": ["USER_SEARCH_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/curator"
+      },
+      "expected_running_states": ["CURATOR_RUNNING"],
+      "ui_source_states": ["USER_SEARCH_REVIEW"],
+      "ui_keys": ["curator"],
+      "ui_testids": ["phase-action-curator"],
+      "guards": ["accepted USER_SEARCH_REVIEW source review checkpoint"]
+    },
+    {
+      "id": "start_synthesizer",
+      "label": "Start synthesizer after deep-dive review",
+      "kind": "phase_start",
+      "phase": "synthesizer",
+      "source_states": ["USER_DEEP_DIVE_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/synthesizer"
+      },
+      "expected_running_states": ["SYNTHESIZER_RUNNING"],
+      "ui_source_states": ["USER_DEEP_DIVE_REVIEW"],
+      "ui_keys": ["synthesizer"],
+      "ui_testids": ["phase-action-synthesizer"],
+      "guards": ["accepted USER_DEEP_DIVE_REVIEW source review checkpoint"]
+    },
+    {
+      "id": "start_tension_extraction",
+      "label": "Start optional tension extraction",
+      "kind": "phase_start",
+      "phase": "tension_extraction",
+      "source_states": ["USER_FIELD_REVIEW", "USER_TENSION_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/tension_extraction"
+      },
+      "expected_running_states": ["TENSION_EXTRACTION_RUNNING"],
+      "ui_source_states": [],
+      "ui_keys": [],
+      "ui_testids": [],
+      "guards": ["AUTOESSAY_TENSION_TAXONOMY_ENABLED and synthesizer tensions available"]
+    },
+    {
+      "id": "start_framework_lens",
+      "label": "Start framework lens",
+      "kind": "phase_start",
+      "phase": "framework_lens",
+      "source_states": ["USER_FIELD_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/framework_lens"
+      },
+      "expected_running_states": ["FRAMEWORK_LENS_RUNNING"],
+      "ui_source_states": ["USER_FIELD_REVIEW"],
+      "ui_keys": ["framework-lens"],
+      "ui_testids": ["phase-action-framework-lens"]
+    },
+    {
+      "id": "start_ideator",
+      "label": "Start ideator",
+      "kind": "phase_start",
+      "phase": "ideator",
+      "source_states": ["USER_FIELD_REVIEW", "USER_LENS_REVIEW", "USER_TENSION_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/ideator"
+      },
+      "expected_running_states": ["IDEATOR_RUNNING"],
+      "ui_source_states": ["USER_FIELD_REVIEW", "USER_LENS_REVIEW"],
+      "ui_keys": ["ideator"],
+      "ui_testids": ["phase-action-ideator"],
+      "guards": ["theory_article runs must pass through framework_lens first"]
+    },
+    {
+      "id": "start_drafter",
+      "label": "Start drafter",
+      "kind": "phase_start",
+      "phase": "drafter",
+      "source_states": ["USER_NOVELTY_REVIEW", "DRAFTER_RUNNING"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/drafter"
+      },
+      "expected_running_states": ["DRAFTER_RUNNING"],
+      "ui_source_states": ["USER_NOVELTY_REVIEW"],
+      "ui_keys": ["drafter"],
+      "ui_testids": ["phase-action-drafter"],
+      "guards": ["selected novelty angle"]
+    },
+    {
+      "id": "start_stylist",
+      "label": "Start stylist",
+      "kind": "phase_start",
+      "phase": "stylist",
+      "source_states": ["DRAFTER_RUNNING", "USER_REVISION_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/stylist"
+      },
+      "expected_running_states": ["STYLIST_RUNNING"],
+      "ui_source_states": ["DRAFTER_RUNNING"],
+      "ui_keys": ["stylist"],
+      "ui_testids": ["phase-action-stylist"],
+      "ui_testids_secondary": ["phase-action-stylist-waiting"],
+      "guards": ["drafter phase_done observed when source state is DRAFTER_RUNNING"]
+    },
+    {
+      "id": "start_critic",
+      "label": "Start final rewrite / critic",
+      "kind": "phase_start",
+      "phase": "critic",
+      "source_states": ["USER_REVISION_REVIEW"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/critic"
+      },
+      "expected_running_states": ["REWRITE_RUNNING", "CRITIC_RUNNING"],
+      "ui_source_states": ["USER_REVISION_REVIEW"],
+      "ui_keys": ["critic"],
+      "ui_testids": ["phase-action-critic"],
+      "guards": ["AUTOESSAY_FINAL_REWRITE_ENABLED controls REWRITE_RUNNING vs CRITIC_RUNNING"]
+    },
+    {
+      "id": "start_integrity",
+      "label": "Start integrity",
+      "kind": "phase_start",
+      "phase": "integrity",
+      "source_states": ["USER_EXTERNAL_SCAN_APPROVAL", "FAILED_VENDOR"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/integrity"
+      },
+      "expected_running_states": ["INTEGRITY_RUNNING"],
+      "ui_source_states": [],
+      "ui_keys": [],
+      "ui_testids": [],
+      "guards": ["approved external scan checkpoint"]
+    },
+    {
+      "id": "start_exports",
+      "label": "Start exports",
+      "kind": "phase_start",
+      "phase": "exports",
+      "source_states": ["USER_FINAL_ACCEPTANCE"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/export"
+      },
+      "expected_running_states": ["EXPORTS_RUNNING"],
+      "ui_source_states": [],
+      "ui_keys": [],
+      "ui_testids": [],
+      "guards": ["phase readiness for exports"]
+    },
+    {
+      "id": "retry_failed_phase",
+      "label": "Retry FAILED_FIXABLE phase",
+      "kind": "failed_recovery",
+      "source_states": ["FAILED_FIXABLE"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/phases/{phase}/retry"
+      },
+      "ui_key_pattern": "retry-{phase}",
+      "ui_testid_pattern": "phase-action-retry-{phase}",
+      "ui_behavior": "enabled"
+    },
+    {
+      "id": "retry_failed_needs_user_rejected",
+      "label": "FAILED_NEEDS_USER retry is rejected by backend",
+      "kind": "failed_recovery",
+      "source_states": ["FAILED_NEEDS_USER"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/phases/{phase}/retry"
+      },
+      "ui_key_pattern": "retry-{phase}",
+      "ui_testid_pattern": "phase-action-retry-{phase}",
+      "ui_behavior": "visible_but_backend_rejects",
+      "expected_http_status": 422,
+      "notes": ["The backend retry resolver is intentionally scoped to FAILED_FIXABLE."]
+    },
+    {
+      "id": "retry_failed_policy_disabled",
+      "label": "FAILED_POLICY direct retry disabled",
+      "kind": "failed_recovery",
+      "source_states": ["FAILED_POLICY"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/phases/{phase}/rerun"
+      },
+      "ui_key_pattern": "retry-{phase}",
+      "ui_testid_pattern": "phase-action-retry-{phase}",
+      "ui_behavior": "disabled",
+      "expected_http_status": 409
+    },
+    {
+      "id": "force_approve_failed_phase",
+      "label": "Force-approve failed phase",
+      "kind": "failed_recovery",
+      "source_states": ["FAILED_FIXABLE", "FAILED_NEEDS_USER", "FAILED_VENDOR", "FAILED_POLICY"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/force-approve"
+      },
+      "ui_testids": ["force-approve-open-modal", "force-approve-confirm"],
+      "ui_behavior": "enabled_when_force_approve_applicable"
+    },
+    {
+      "id": "generic_failed_backedge_blocked",
+      "label": "Generic transition failed-state back-edge is blocked",
+      "kind": "failed_recovery",
+      "source_states": ["FAILED_FIXABLE", "FAILED_NEEDS_USER", "FAILED_VENDOR", "FAILED_POLICY"],
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/runs/{run_id}/transitions"
+      },
+      "target_state_pattern": "USER_*",
+      "expected_http_status": 409
+    }
+  ]
+}

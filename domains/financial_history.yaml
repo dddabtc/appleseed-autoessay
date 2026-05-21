@@ -1,0 +1,103 @@
+id: financial_history
+display_name: Financial History
+version: "0.1.0"
+search:
+  telescope:
+    shortlist_limit: 24
+    deep_dive_limit: 24  # keep verified fulltext runner-ups inside synthesis for archival kernels
+  sources:
+    - id: semantic_scholar
+      enabled: true
+      weight: 1.0
+      query_templates: ["{topic} financial history", "{topic} economic history"]
+    - id: openalex
+      enabled: true
+      weight: 1.05
+      topic_filter: false
+      # Filter intentionally absent: financial-history canon (Kindleberger
+      # 1978, Eichengreen 1992, Bordo & Schwartz 1984, etc.) predates
+      # 2018 + is rarely open-access + may be book-shaped, so the prior
+      # ``publication_year:>2018,is_oa:true,type:article`` filter
+      # destroyed canonical recall. Discovered 2026-05-04 when prod
+      # surfaced a 2025 RCEP article on a 1945-1990 Korean miracle run
+      # because all classical sources had been filtered out (codex
+      # J9 round-1 amendment 1). Curator + (future) J9 LLM rerank do
+      # the quality filtering.
+      query_templates: ["{topic} financial history", "{topic} banking history", "{topic} monetary history"]
+    - id: crossref
+      enabled: true
+      weight: 0.8
+      query_templates: ["{topic} monetary history", "{topic} banking history"]
+    - id: cnki
+      enabled: true
+      weight: 0.85
+      query_templates: ["{topic} 金融史", "{topic} 经济史", "{topic} 银行史"]
+    - id: wikipedia_zh
+      enabled: true
+      weight: 0.3
+      query_templates: ["{topic}", "{topic} 金融史"]
+    - id: ssrn_manual
+      enabled: true
+      weight: 0.7
+      mode: manual_upload
+      automated_client_from: v2
+      query_templates: ["{topic} finance history working paper"]
+  cnki:
+    enabled: true
+    weight: 0.85
+    query_templates: ["{topic} 金融史", "{topic} 经济史", "{topic} 银行史"]
+  default_query_terms: ["financial history", "economic history", "banking", "credit markets", "monetary policy"]
+  exclusion_terms: ["personal finance advice", "technical analysis"]
+ranking:
+  recency_window_years: 5
+  source_weights:
+    peer_reviewed_journal: 1.0
+    university_working_paper: 0.85
+    ssrn_preprint: 0.75
+    policy_report: 0.55
+literature:
+  policy:
+    include_working_papers: true
+    include_books: true
+    include_preprints: true
+    paywalled_policy: metadata_only
+  venue_weights:
+    financial history review: 1.0
+    business history: 0.92
+    economic history review: 0.95
+    journal of economic history: 0.95
+    exploratory working paper series: 0.75
+terms:
+  thesaurus:
+    central_bank: ["central banking", "monetary authority", "lender of last resort"]
+    crisis: ["panic", "bank run", "financial instability"]
+    credit: ["credit market", "bank lending", "debt finance"]
+journals:
+  targets:
+    - name: "Financial History Review"
+      expected_length_words: [8000, 11000]
+      citation_style: chicago_notes_bibliography
+    - name: "Business History"
+      expected_length_words: [8000, 11000]
+      citation_style: chicago_author_date
+    - name: "Economic History Review"
+      expected_length_words: [9000, 12000]
+      citation_style: chicago_author_date
+classification:
+  jel_codes: ["N20", "N21", "N22", "G01", "G21", "E42"]
+citation:
+  style: chicago_author_date
+  require_page_for_direct_quote: true
+  density_target_per_1000_words: [4, 8]
+voice:
+  defaults:
+    register: "scholarly, restrained, direct"
+    hedge_policy: "hedge when source base is thin"
+evidence:
+  minimum_consensus_sample: 30
+  skim_target_count: 200
+  shortlist_target_count: 20
+  deep_dive_target_count: 5
+  primary_source_policy: "Prefer archival or contemporaneous evidence for causal historical claims."
+roundtable:
+  default_tier: Lite

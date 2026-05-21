@@ -1,0 +1,96 @@
+id: economic_history
+display_name: Economic History
+version: "0.1.0"
+description: "Economic-history domain template for long-run growth, institutions, trade, finance, labor, and living standards."
+search:
+  telescope:
+    shortlist_limit: 24
+    deep_dive_limit: 14  # PR-G-Sources Stage 1: was implicit 6
+  sources:
+    - id: semantic_scholar
+      enabled: true
+      weight: 1.0
+      query_templates: ["{topic} economic history", "{topic} historical economics"]
+    - id: openalex
+      enabled: true
+      weight: 1.0
+      topic_filter: false
+      # Filter intentionally absent: economic-history canon (Amsden 1989,
+      # Wade 1990, Cumings 1981, Eckert 1991, North 1990, etc.) predates
+      # 2018 + is rarely open-access + may be book-shaped, so the prior
+      # ``publication_year:>2018,is_oa:true,type:article`` filter
+      # destroyed canonical recall. Discovered 2026-05-04 when prod
+      # surfaced a 2025 RCEP article on a 1945-1990 Korean miracle run
+      # because all classical sources had been filtered out (codex
+      # J9 round-1 amendment 1). Curator + (future) J9 LLM rerank do
+      # the quality filtering.
+      query_templates: ["{topic} economic history", "{topic} cliometrics", "{topic} long-run economic development"]
+    - id: crossref
+      enabled: true
+      weight: 0.9
+      query_templates: ["{topic} cliometrics", "{topic} long-run economic development"]
+    - id: ssrn_manual
+      enabled: true
+      weight: 0.7
+      mode: manual_upload
+      query_templates: ["{topic} economic history working paper"]
+  default_query_terms:
+    - economic history
+    - cliometrics
+    - institutions
+    - long-run development
+    - historical national accounts
+  exclusion_terms:
+    - personal finance advice
+    - market forecast
+ranking:
+  recency_window_years: 8
+  source_weights:
+    peer_reviewed_journal: 1.0
+    university_working_paper: 0.85
+    policy_report: 0.55
+literature:
+  policy:
+    include_working_papers: true
+    include_books: true
+    include_preprints: true
+    paywalled_policy: metadata_only
+  venue_weights:
+    economic history review: 1.0
+    journal of economic history: 1.0
+    explorations in economic history: 0.95
+    european review of economic history: 0.95
+terms:
+  thesaurus:
+    growth: ["long-run growth", "development", "productivity"]
+    institutions: ["property rights", "state capacity", "legal origins"]
+    trade: ["market integration", "globalization", "tariffs"]
+journals:
+  targets:
+    - name: "Economic History Review"
+      expected_length_words: [9000, 12000]
+      citation_style: chicago_author_date
+    - name: "Journal of Economic History"
+      expected_length_words: [9000, 12000]
+      citation_style: chicago_author_date
+    - name: "Explorations in Economic History"
+      expected_length_words: [8000, 11000]
+      citation_style: chicago_author_date
+classification:
+  jel_codes: ["N10", "N13", "N14", "N20", "N23", "N24"]
+citation:
+  style: chicago_author_date
+  require_page_for_direct_quote: true
+  density_target_per_1000_words: [4, 8]
+voice:
+  defaults:
+    register: "analytical, evidence-forward, restrained"
+    hedge_policy: "hedge causal claims unless identification is explicit"
+evidence:
+  minimum_consensus_sample: 30
+  skim_target_count: 200
+  shortlist_target_count: 20
+  deep_dive_target_count: 6
+  primary_source_policy: "Prefer primary series, archival records, or documented datasets for empirical historical claims."
+roundtable:
+  default_tier: Lite

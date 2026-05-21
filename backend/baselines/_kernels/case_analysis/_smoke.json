@@ -1,0 +1,15 @@
+{
+  "title": "[D4-SMOKE] case_analysis kernel sample",
+  "domain_id": "humanities",
+  "language": "en",
+  "paper_mode": "case_analysis",
+  "baseline_label": "case_analysis-smoke-sample",
+  "kernel_schema_version": "v1",
+  "research_kernel": {
+    "tentative_question": "What does the textual record of late-Qing Jiangnan imprints reveal about the chronology of regional book culture?",
+    "observed_puzzle": "Conventional periodization assigns these editions to a narrow Tongzhi-era band, but inspection of colophons and printer's marks suggests a wider arc.",
+    "scope": "Late-Qing Jiangnan (~1860-1900); colophons + prefaces + printer's marks; canonical secondary literature on Chinese print culture.",
+    "method_pref": "Evidence-bound chronology: paratextual evidence first, narrative reconstruction second.",
+    "theory_pref": "Compare against Brokaw 2005 + McDermott 2006 frameworks for late imperial print culture."
+  }
+}

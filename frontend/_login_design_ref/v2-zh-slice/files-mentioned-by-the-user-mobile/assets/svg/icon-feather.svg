@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- 墨水瓶 -->
+  <rect x="6" y="22" width="14" height="6" rx="1.5" fill="#2f5d3a"/>
+  <rect x="9" y="20" width="8" height="2" fill="#2f5d3a"/>
+  <!-- 羽毛笔 -->
+  <path d="M22 4 C 26 8 26 16 18 22 L 14 22 C 14 18 16 8 22 4 Z" fill="#3d6b48" stroke="#2f5d3a" stroke-width="1"/>
+  <path d="M22 4 L 16 18" stroke="#2f5d3a" stroke-width="0.8"/>
+</svg>

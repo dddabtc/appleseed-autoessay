@@ -1,0 +1,82 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    env_file:
+      - .env
+    environment:
+      AUTOESSAY_ENV: ${AUTOESSAY_ENV:-local}
+      AUTOESSAY_BASE_URL: ${AUTOESSAY_BASE_URL:-http://127.0.0.1:3017}
+      AUTOESSAY_DATA_DIR: /data
+      AUTOESSAY_DOMAIN_DIR: /app/domains
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/autoessay.sqlite3}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: ["uvicorn", "autoessay.main:app", "--host", "0.0.0.0", "--port", "8017"]
+    ports:
+      - "127.0.0.1:8017:8017"
+    volumes:
+      - autoessay-data:/data
+    depends_on:
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    env_file:
+      - .env
+    environment:
+      AUTOESSAY_ENV: ${AUTOESSAY_ENV:-local}
+      AUTOESSAY_DATA_DIR: /data
+      AUTOESSAY_DOMAIN_DIR: /app/domains
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/autoessay.sqlite3}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: ["python", "-m", "autoessay.worker"]
+    stop_grace_period: ${AUTOESSAY_WORKER_STOP_GRACE:-60m}
+    volumes:
+      - autoessay-data:/data
+    depends_on:
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8017}
+    ports:
+      - "127.0.0.1:3017:3000"
+    depends_on:
+      api:
+        condition: service_started
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - autoessay-redis:/data
+
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    env_file:
+      - .env
+    environment:
+      AUTOESSAY_DATA_DIR: /data
+      AUTOESSAY_DOMAIN_DIR: /app/domains
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/autoessay.sqlite3}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: ["alembic", "upgrade", "head"]
+    volumes:
+      - autoessay-data:/data
+    depends_on:
+      redis:
+        condition: service_started
+
+volumes:
+  autoessay-data:
+  autoessay-redis:

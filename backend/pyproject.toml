@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "appleseed-autoessay-backend"
+version = "0.1.0"
+description = "FastAPI backend skeleton for appleseed-autoessay."
+requires-python = ">=3.10"
+dependencies = [
+  "alembic>=1.13,<2",
+  "bcrypt>=4,<5",
+  "fastapi>=0.125,<0.126",
+  "httpx>=0.27,<1",
+  # PR-B2 CJK-aware style profile uses jieba for Chinese
+  # segmentation when input is detected as Chinese. The implementation
+  # falls back to char-bigrams if the import fails, so the dependency
+  # is logically optional, but we pin it tightly here so Docker
+  # rebuilds don't drift the corpus profile semantics. Pure-python,
+  # no native compile.
+  "jieba>=0.42.1,<0.43",
+  "markdown>=3.6,<4",
+  "mypy>=1.8,<2",
+  "pydantic>=1.10,<2",
+  "playwright>=1.49,<2",
+  "python-docx>=1,<2",
+  "python-multipart>=0.0.9,<1",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.23,<1",
+  "pypdf>=5,<6",
+  "pyyaml>=6,<7",
+  "redis>=5,<6",
+  "rapidfuzz>=3,<4",
+  "rq>=1.16,<2",
+  "ruff>=0.4,<1",
+  "sqlalchemy>=2.0,<3",
+  "uvicorn[standard]>=0.29,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "alembic>=1.13,<2",
+  "httpx>=0.27,<1",
+  "markdown>=3.6,<4",
+  "mypy>=1.8,<2",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.23,<1",
+  "pypdf>=5,<6",
+  "playwright>=1.49,<2",
+  "python-docx>=1,<2",
+  "respx>=0.21,<1",
+  "ruff>=0.4,<1",
+]
+ml = [
+  "sentence-transformers>=3,<4",
+  "sqlite-vec>=0.1,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.10"
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_return_any = true
+ignore_missing_imports = true
+disable_error_code = ["import-untyped"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["src"]
+testpaths = ["tests"]
+# PR-370: ``real_r10_fixture`` tests are opt-in acceptance checks that
+# bind to a frozen QA artifact (``frontend/tmp/qa-artifacts/run_d9295f9a...``)
+# and re-assert specific source titles from an old curator run. They
+# drift whenever the off-topic filter is tuned. Skip by default; run
+# them explicitly via ``pytest -m real_r10_fixture`` after refreshing
+# the fixture.
+addopts = "-m 'not real_r10_fixture'"
+markers = [
+  "live: opt-in tests that call live external services",
+  "real_r10_fixture: acceptance test that uses the recorded R10 scout candidate fixture",
+]

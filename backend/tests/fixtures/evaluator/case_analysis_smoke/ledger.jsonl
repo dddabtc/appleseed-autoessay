@@ -1,0 +1,6 @@
+{"ts": "2026-05-04T11:00:00Z", "event": "run_directory_created", "run_id": "run_smoke_fixture", "project_id": "proj_smoke_fixture", "state": "CREATED"}
+{"ts": "2026-05-04T11:00:01Z", "event_type": "phase_started", "payload": {"phase": "scout"}}
+{"ts": "2026-05-04T11:00:02Z", "event_type": "phase_done", "payload": {"phase": "scout", "candidate_count": 3}}
+{"ts": "2026-05-04T11:00:03Z", "event_type": "phase_done", "payload": {"phase": "curator", "shortlist_count": 3}}
+{"ts": "2026-05-04T11:00:04Z", "event_type": "phase_done", "payload": {"phase": "drafter", "version": "v001"}}
+{"ts": "2026-05-04T11:00:05Z", "event_type": "phase_done", "payload": {"phase": "exports"}}
