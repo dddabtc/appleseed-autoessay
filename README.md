@@ -2,14 +2,71 @@
 
 **Languages:** English | [中文](README.zh.md) | [日本語](README.ja.md)
 
-Appleseed AutoEssay is an open-source academic manuscript workflow tool. It turns a research question into a reviewable manuscript with source selection, phase gates, audit notes, and export files.
+![Appleseed AutoEssay workspace walkthrough](docs/screenshots/deep/en/08-workspace-loaded.png)
 
-The project supports two generation modes:
+## What It Does
 
-- **ARS express:** a faster single-pass manuscript path for quick drafts.
-- **13-phase deep:** a reviewable pipeline with proposal, source, synthesis, drafting, review, integrity, and export phases.
+Appleseed AutoEssay is an open-source academic manuscript workflow tool. It turns a research question into a reviewable manuscript with source selection, research-kernel capture, state-machine checkpoints, audit notes, and export files. The app supports a fast Express path for quick drafts and a 13-phase Deep path for reviewable source, synthesis, drafting, review, integrity, and export work. It is built for local or self-hosted deployments where operators provide their own LLM gateway, database, Redis, and account flow.
 
 There is no hosted public service attached to this repository and there are no default production accounts.
+
+## Key Features
+
+- **Dual-mode generation:** choose ARS Express for a faster single-pass manuscript path, or 13-phase Deep mode for a reviewable workflow with explicit gates.
+- **Research-kernel autogeneration:** start from a title and domain, then let the AI fill the required kernel fields before you edit and submit them.
+- **State-machine workflow:** each run records its current state, recent events, phase history, review gates, and recovery state.
+- **Multi-language UI:** English, Chinese, and Japanese UI copy, with manuscript language selected per run.
+- **Export formats:** Markdown, HTML, DOCX, LaTeX, BibTeX, CSL JSON, manifest, literature-usage table, and self-check report.
+
+## Screenshots Walkthrough
+
+### 1. Create An Essay
+
+Start a run from `/runs/new` by choosing a domain, title, manuscript language, generation mode, paper mode, and research-kernel fields.
+
+![Create a new essay run](docs/screenshots/deep/en/06-new-run-form.png)
+
+### 2. Choose A Generation Mode
+
+Express mode is the default for quick drafts. Deep mode is available when you want the longer 13-phase workflow with review points and richer phase artifacts.
+
+![Express and Deep mode selector](docs/screenshots/express/en/01-mode-selector.png)
+
+### 3. Let AI Fill The Kernel
+
+The kernel is the compact research contract Appleseed uses before writing: observed puzzle, tentative question, scope, method preference, theory preference, and primary-material status. The AI fill button drafts these fields from the title and domain so the user edits a structured starting point instead of a blank form.
+
+![AI-filled research kernel](docs/screenshots/express/en/02-kernel-form-filled.png)
+
+### 4. Express Mode
+
+Express mode is designed for a roughly 3-5 minute manuscript pass on a configured LLM gateway. While it runs, the workspace stays in an explicit `EXPRESS_RUNNING` state; when it finishes, the transparency panel shows token usage, audit status, an outline map, and a manuscript preview.
+
+![Express mode running](docs/screenshots/express/en/03-express-running.png)
+
+![Express transparency panel](docs/screenshots/express/en/04-express-transparency.png)
+
+### 5. Deep Mode: 13-Phase Workflow
+
+Deep mode walks through the longer state machine: proposal, scout, curator, synthesizer, framework lens, ideator, drafter, stylist, final rewrite, critic, integrity, final acceptance, and export. The workspace keeps the active state, phase history, and review controls visible.
+
+![Deep workspace state](docs/screenshots/deep/en/08-workspace-loaded.png)
+
+The proposal screen gives the user an early direction check before deeper source and drafting work starts.
+
+![Initial proposal review](docs/screenshots/deep/en/10-01-after-Generate-Initial-Proposal.png)
+
+The integrity stage surfaces citation and audit findings before final acceptance.
+
+![Integrity findings](docs/screenshots/deep/en/10-10-after-Accept-integrity-findings.png)
+
+The export stage packages the manuscript and supporting files for downstream review.
+
+![Export files ready](docs/screenshots/deep/en/11-exports-done-cta.png)
+
+### 6. Multi-Language UI
+
+The same workflow is captured in English, Chinese, and Japanese under `docs/screenshots/**/{en,zh,ja}/`. The UI language switcher changes product copy, while manuscript language remains a per-run setting.
 
 ## Quick Start
 
@@ -51,13 +108,9 @@ For local development and CI, use stub flags for external LLM and vendor calls. 
 
 To bootstrap the first password user, generate a bcrypt hash locally and set `AUTOESSAY_INITIAL_ADMIN_USERNAME` plus `AUTOESSAY_INITIAL_ADMIN_PASSWORD_HASH` in your private environment. The bootstrap path is disabled when the hash is unset.
 
-## What It Does
+## Architecture
 
-- Creates academic manuscript runs from a title, research question, domain, paper mode, and notes.
-- Supports manual review gates or auto-advance through eligible phases.
-- Tracks source selection, material diagnosis, argument direction, draft, review findings, integrity findings, and exports.
-- Exports Markdown, HTML, DOCX, LaTeX, BibTeX, CSL JSON, manifest, literature usage, and self-check files.
-- Supports English, Chinese, and Japanese UI copy, with manuscript language configured per run.
+The dual-mode design is recorded in [ADR-0003: Dual-mode manuscript generation](docs/adr/0003-dual-mode-manuscript-generation.md). Express mode optimizes for quick draft turnaround and a compact transparency panel; Deep mode keeps the full state-machine workflow for source review, synthesis, drafting, audits, and exports. The broader writing method is described in [Methodology reference](references/methodology.md).
 
 ## Documentation
 
@@ -65,8 +118,16 @@ To bootstrap the first password user, generate a bcrypt hash locally and set `AU
 - [Design notes](docs/DESIGN.md)
 - [System explanation](docs/explained/SYSTEM_EXPLAINED.en.md)
 - [Methodology reference](references/methodology.md)
-- [Security policy](SECURITY.md)
-- [Contributing guide](CONTRIBUTING.md)
+- [ADR-0003: Dual-mode manuscript generation](docs/adr/0003-dual-mode-manuscript-generation.md)
+- [Changelog](CHANGELOG.md)
+
+## Security
+
+Read [SECURITY.md](SECURITY.md) before reporting vulnerabilities or operating a deployment. Do not commit real provider tokens, account credentials, production URLs, or private environment files.
+
+## Contributing
+
+Contributions are welcome through issues and pull requests. Start with [CONTRIBUTING.md](CONTRIBUTING.md), run the local checks before submitting changes, and keep screenshots or docs free of private service details.
 
 ## License
 
