@@ -1,21 +1,23 @@
-# 设计说明（appleseed-autoessay）
+# Design Notes (appleseed-autoessay)
 
-## 1. 总体架构
+**Languages:** English | [中文](DESIGN.zh.md)
+
+## 1. Overall Architecture
 
 ```
 +-------------+       HTTPS       +-------------------+        +-------------------+
-|   浏览器    |  <------------->  |  HAProxy / Nginx  |  --->  |  frontend (Vite)  |
+|   browser   |  <------------->  |   reverse proxy   |  --->  |  frontend (Vite)  |
 | (React/Vite)|                   +-------------------+        +-------------------+
 +-------------+                            |                            |
                                            v                            v
                                     +--------------+           +-------------------+
-                                    |   Casdoor    |           |   api (FastAPI)   |
-                                    | (OIDC + UI)  |           |                   |
+                                    | OIDC IdP     |           |   api (FastAPI)   |
+                                    | (generic)    |           |                   |
                                     +--------------+           +-------------------+
                                            |                            |  rq job
                                            v                            v
                                     +--------------+           +-------------------+
-                                    | casdoor-pg   |           |  worker (RQ)      |
+                                    | identity DB  |           |  worker (RQ)      |
                                     | (postgres)   |           |  + autoessay/...  |
                                     +--------------+           +-------------------+
                                                                        |
@@ -25,21 +27,24 @@
                                                               +-----------------+
                                                                        |
                                                                        v
-                                                          外部 API:
-                                                          - LLM (one-api)
-                                                          - 文献：OpenAlex / CNKI
-                                                          - 诚信：Originality.AI
+                                                          External APIs:
+                                                          - OpenAI-compatible
+                                                            LLM gateway
+                                                          - Literature metadata /
+                                                            full-text providers
+                                                          - Optional integrity /
+                                                            originality provider
 ```
 
-7 个 production 服务（`docker-compose.yml`）：`casdoor-postgres`、`casdoor`、`frontend`、`api`、`worker`、`redis`、`migrate`。`worker` 与 `migrate` 复用 api 镜像。
+Typical self-hosted compose services: identity provider, identity database, `frontend`, `api`, `worker`, `redis`, and `migrate`. `worker` and `migrate` reuse the api image.
 
-2 个容器镜像：`ghcr.io/dddabtc/appleseed-autoessay-{api,frontend}`，由 `build.yml` 在 push 到 main 时构建并打 `${SHA}` 与 `:latest` 双 tag 推送。
+Two container images are expected: `your-org/appleseed-autoessay-{api,frontend}`. CI can build them on pushes to main and publish both `${SHA}` and `:latest` tags.
 
-## 2. 状态机
+## 2. State Machine
 
-每个 run 维护一个 state（UPPER\_SNAKE\_CASE）。运行态在 `XXX_RUNNING` / `PROPOSAL_DRAFTING` / `REWRITE_RUNNING`，用户审阅态在 `USER_…_REVIEW`，例外有 `FAILED_FIXABLE` / `FAILED_NEEDS_USER` / `FAILED_VENDOR` / `FAILED_POLICY` / `CANCELLED`。
+Each run keeps a single state in `UPPER_SNAKE_CASE`. Running states use `XXX_RUNNING`, `PROPOSAL_DRAFTING`, or `REWRITE_RUNNING`; user-review states use `USER_..._REVIEW`; exceptions include `FAILED_FIXABLE`, `FAILED_NEEDS_USER`, `FAILED_VENDOR`, `FAILED_POLICY`, and `CANCELLED`.
 
-简化迁移图（仅展示主路径，`USER_*_REVIEW` 之间的回退由 phase rerun 实现）：
+Simplified transition graph, showing only the main path. Rollbacks between `USER_*_REVIEW` states are handled by phase reruns.
 
 ```
 DOMAIN_LOADED
@@ -72,7 +77,7 @@ PROPOSAL_DRAFTING -> USER_PROPOSAL_REVIEW
                                 v
                         DRAFTER_RUNNING -> USER_REVISION_REVIEW
                                 |
-                       (stylist 可重跑；critic 入口会先跑 final_rewrite)
+                       (stylist can rerun; critic first runs final_rewrite)
                                 v
                  STYLIST_RUNNING -> USER_REVISION_REVIEW
                                 |
@@ -86,23 +91,23 @@ PROPOSAL_DRAFTING -> USER_PROPOSAL_REVIEW
                         USER_FINAL_ACCEPTANCE -> EXPORTS_RUNNING -> DONE
 ```
 
-## 2.A 阶段版本状态机（PR-A4 per-phase version model）
+## 2.A Per-Phase Version State Machine (PR-A4 Model)
 
-§2 描述 run-level 状态机；本节描述 PR-A4 系列引入的 per-phase 版本状态机。两套机器正交：run 处于 `DRAFTER_RUNNING` 时，drafter 卡片在已提交的 `RunHead` 上看到的 UI 状态独立于 run state。
+Section 2 describes the run-level state machine. This section describes the per-phase version model introduced by the PR-A4 series. The two machines are orthogonal: while a run is in `DRAFTER_RUNNING`, the drafter card's UI state for the committed `RunHead` is independent of the run state.
 
-### 2.A.1 5 条规则（来自用户 2026-05-02）
+### 2.A.1 Five Rules
 
-| # | 规则 | 实现锚点 |
+| # | Rule | Implementation anchor |
 |---|---|---|
-| 1 | 每个 phase 独立版本号；不存在主项目版本号 | `phase_versions.version_no` 按 (run, phase) 单调递增（PR-A4.1a/b） |
-| 2 | 改有下游的节点 → 强制写新版本 + 下游标"未生成" | `commit_phase_version` 总分配新 pv；`_cascade_phase_after_upstream_change` 删除下游 RunHead 行（找不到 lineage 全等候选时） |
-| 3 | 改叶子节点 → replace 或 new；语义分两路 | **直接编辑产物**（modal / proposal save）走 `replace_phase_version` 或 user-edit 新版本，提交后**直接进入 `generated`**（不进入未生成态）。**改 prompt / context 的草稿**（`PhasePromptDraft`）在 LLM 重跑前让卡片显示 `prompt_edited` 态，重跑后才回到 `generated` |
-| 4 | 已发布版本仅可反依赖顺序删除 | `delete_phase_version` 在 RunHead / `phase_version_inputs.upstream_pv_id` / `parent_pv_id` / `branches.forked_from_pv_id`（含软删）任一引用时拒绝 |
-| 5 | 切版本 → 下游沿 lineage 自动级联，找不到则下游头清空 | `activate_version` 调 `_cascade_phase_after_upstream_change`；候选筛选用 `_lineage_matches`（**全等**，不是子集），找不到时 `DELETE FROM run_heads`（schema 上 `version_id` 是 NOT NULL，所以是删行不是置 NULL） |
+| 1 | Each phase has an independent version sequence; there is no project-wide version number. | `phase_versions.version_no` increases monotonically per (run, phase). |
+| 2 | Changing a node with downstream dependencies must create a new version and mark downstream nodes as ungenerated. | `commit_phase_version` always allocates a new phase version; `_cascade_phase_after_upstream_change` deletes downstream `RunHead` rows when it cannot find an exact lineage match. |
+| 3 | Changing a leaf node can replace or create a new version; semantics split by operation. | Direct artifact edits (modal / proposal save) use `replace_phase_version` or create a user-edit version, then go directly to `generated`. Prompt or context drafts (`PhasePromptDraft`) show `prompt_edited` until an LLM rerun produces a new version. |
+| 4 | Published versions can only be deleted in reverse dependency order. | `delete_phase_version` rejects deletion when referenced by RunHead, `phase_version_inputs.upstream_pv_id`, `parent_pv_id`, or `branches.forked_from_pv_id`, including soft-deleted branches. |
+| 5 | Activating a version cascades downstream along lineage; if no match exists, downstream heads are cleared. | `activate_version` calls `_cascade_phase_after_upstream_change`; candidates are filtered with exact `_lineage_matches`, and missing matches delete `run_heads` rows because `version_id` is NOT NULL. |
 
-### 2.A.2 4 个 UI 状态（来自 3 flag 计算）
+### 2.A.2 Four UI States From Three Flags
 
-后端 `GET /api/runs/{id}/phase-history` 返回每 phase 三个 flag；前端 `deriveCardState`（`frontend/src/lib/phaseHistoryState.ts`）把它们坍缩成 4 个用户可见状态：
+`GET /api/runs/{id}/phase-history` returns three flags per phase. The frontend `deriveCardState` helper in `frontend/src/lib/phaseHistoryState.ts` collapses them into four user-visible states.
 
 | state | head_missing | prompt_dirty | lineage_dirty |
 |---|---|---|---|
@@ -111,122 +116,127 @@ PROPOSAL_DRAFTING -> USER_PROPOSAL_REVIEW
 | `upstream_superseded` | false | false | true |
 | `generated` | false | false | false |
 
-`*` = 不关心；`head_missing` 优先级最高，`prompt_dirty` 次之（覆盖 `lineage_dirty`，因为撤销 prompt 编辑后才能讨论 lineage 是否仍 stale）。当 `prompt_edited` + `lineage_dirty` 同时成立时 modal 只显示 cancel/regenerate 主操作 + 一条独立 advisory（不显示 `activate_lineage_match`）。
+`*` means "do not care". `head_missing` has highest priority, then `prompt_dirty`; this intentionally masks `lineage_dirty` because prompt edits must be resolved before lineage staleness can be acted on. When both `prompt_edited` and `lineage_dirty` are true, the modal shows only cancel/regenerate primary actions plus a separate advisory, not `activate_lineage_match`.
 
-3 个 flag 的精确定义（`backend/src/autoessay/phase_history.py`）：
-- `head_missing`: (run, branch, phase) 没有 `RunHead` 行。
-- `prompt_dirty`: 至少一条 `PhasePromptDraft` 的 `content_hash` 与当前 head pv 的 `PhaseVersionPrompt.content_hash`（同 prompt_key）不同。head 没有该 key 但 draft 存在也算 dirty。
-- `lineage_dirty`: head pv 的 `phase_version_inputs.upstream_pv_id` 与当前 upstream `RunHead.version_id` 不再相等（任一上游 phase 不匹配即 dirty）。
+Precise flag definitions in `backend/src/autoessay/phase_history.py`:
 
-**重要：phase 卡片状态来自已提交的 `RunHead`，不是 in-flight pv 的 status。** 首跑时卡片保持 `ungenerated` 直到 `commit_phase_version` 写 RunHead；rerun 时旧 head 保持 `generated`，直到新 pv 提交（成功）或失败（旧 head 不动）。
+- `head_missing`: there is no `RunHead` row for (run, branch, phase).
+- `prompt_dirty`: at least one `PhasePromptDraft.content_hash` differs from the current head phase version's `PhaseVersionPrompt.content_hash` for the same `prompt_key`. A draft also counts as dirty when the head has no matching key.
+- `lineage_dirty`: the head phase version's `phase_version_inputs.upstream_pv_id` no longer equals the current upstream `RunHead.version_id`; any upstream phase mismatch makes it dirty.
 
-### 2.A.3 操作 → 状态转移
+Important: phase-card state comes from the committed `RunHead`, not from an in-flight phase version status. On the first run, the card remains `ungenerated` until `commit_phase_version` writes the `RunHead`. On rerun, the old head stays `generated` until the new phase version commits successfully; failures leave the old head untouched.
 
-按"修改图"分两组。前组改 phase 版本 / head 指针；后组改 prompt 草稿。
+### 2.A.3 Operations To State Transitions
 
-**Version / head 操作（4 个）**：
+Operations are grouped by whether they change phase versions / head pointers or prompt drafts.
 
-| 操作 | 端点 | 主要影响 |
+Version / head operations:
+
+| Operation | Endpoint | Main effect |
 |---|---|---|
-| `rerun` | `POST /api/runs/{id}/phases/{phase}/rerun` 或 `POST /api/runs/{id}/{phase}` (start_*) | 总写新 pv；新 head 指向新版本；下游级联（找到 lineage 全等候选则切到该候选；否则下游 head 删除） |
-| `activate` | `POST /api/runs/{id}/phases/{phase}/versions/{pv}/activate`，及 `POST /api/runs/{id}/phases/{phase}/versions/activate-lineage-match`（A4.4 加，自动找匹配候选） | head 指针改向已存在 pv；下游级联同 rerun |
-| `delete` | `DELETE /api/runs/{id}/phases/{phase}/versions/{pv}` | 反依赖检查通过后删除（`phase_versions` 无 `deleted_at` 字段，硬删），同步清理 `phase_version_prompts` / `artifacts_v2` / `phase_version_inputs` 行 + 归档目录 |
-| `fork` | `POST /api/runs/{id}/branches`（base_pv_id 必为 `done` 状态） | 创建新分支根于指定 pv；新分支下游 phase 走 `reachable_pv_ids_for_branch`（含 `forked_from_pv_id` 种子）匹配 lineage |
+| `rerun` | `POST /api/runs/{id}/phases/{phase}/rerun` or `POST /api/runs/{id}/{phase}` (`start_*`) | Always writes a new phase version; the new head points at it; downstream heads cascade to an exact lineage match or are deleted. |
+| `activate` | `POST /api/runs/{id}/phases/{phase}/versions/{pv}/activate` and `POST /api/runs/{id}/phases/{phase}/versions/activate-lineage-match` | Moves the head pointer to an existing phase version; downstream cascade is the same as rerun. |
+| `delete` | `DELETE /api/runs/{id}/phases/{phase}/versions/{pv}` | Deletes only after reverse-dependency checks pass; `phase_versions` has no `deleted_at`, so deletion is hard delete and also cleans `phase_version_prompts`, `artifacts_v2`, `phase_version_inputs`, and archive directories. |
+| `fork` | `POST /api/runs/{id}/branches` with `base_pv_id` in `done` status | Creates a new branch rooted at the selected phase version; downstream matching uses `reachable_pv_ids_for_branch`, including the `forked_from_pv_id` seed. |
 
-**Prompt-draft 操作（2 个，A4.4 完整闭环）**：
+Prompt-draft operations:
 
-| 操作 | 端点 | 影响 |
+| Operation | Endpoint | Effect |
 |---|---|---|
-| `save prompt draft` | `PUT /api/runs/{id}/phases/{phase}/prompt` | 写 / 更新 `PhasePromptDraft` 行；下次该 phase 计算 `prompt_dirty` 为 true → 卡片切到 `prompt_edited` |
-| `cancel prompt drafts (phase-wide)` | `DELETE /api/runs/{id}/phases/{phase}/prompts/drafts` | 删除该 phase 所有 draft 行；幂等。`prompt_dirty` 复评为 false → 卡片回到 `lineage_dirty` 决定的态（通常 `generated`） |
+| `save prompt draft` | `PUT /api/runs/{id}/phases/{phase}/prompt` | Creates or updates `PhasePromptDraft`; the next phase-history calculation reports `prompt_dirty=true`, so the card becomes `prompt_edited`. |
+| `cancel prompt drafts (phase-wide)` | `DELETE /api/runs/{id}/phases/{phase}/prompts/drafts` | Deletes all drafts for the phase, idempotently. Recalculation sets `prompt_dirty=false`, so the card falls back to the state determined by `lineage_dirty`, usually `generated`. |
 
-### 2.A.4 级联激活（rule 5 实现细节）
+### 2.A.4 Cascade Activation
 
-钻石 lineage 示例：
-
-```
-scout v1 ──┬──→ curator v1 ──→ synthesizer v1
-           │
-           └──→ ideator v1
-```
-
-切 scout 到不同版本后，`_cascade_phase_after_upstream_change` 按 `_PHASE_RUNNERS` 顺序处理每个下游 phase：
-
-1. 计算当前上游头向量 `expected = {upstream_phase: RunHead.version_id, ...}`。
-2. 在 `reachable_pv_ids_for_branch(branch)` 范围内（含 fork 来源继承）扫描该 phase 的 `done` 候选。
-3. 用 `_lineage_matches(candidate.lineage, expected)` —— **必须 `lineage == expected` 全等**（不是子集），否则历史钻石分支会错误命中（codex 2026-05-02 修正）。
-4. 多个匹配时取 `version_no` 最大；找不到则 `DELETE FROM run_heads WHERE (run, branch, phase) = ...`（`version_id` 列是 NOT NULL，所以删行而非置 NULL）。
-5. 文件物化（purge legacy 路径 + restore 新 head 产物）**只对级联触及的下游 phase**执行；上游不动（PR-A4.3 收窄范围以保护 pre-migration vanilla 文件 / orphan upstream 产物）。
-
-### 2.A.5 prompt 快照不可变
-
-`phase_version_prompts` 是 per-pv 的 prompt 内容快照，主键为 `(phase_version_id, prompt_key)`；`source` 是 CHECK 约束的列（取值 `'default'` / `'override'`），不在主键里。**写入后只读**，`prompt_dirty` 检测以这些快照为基线。两条入口：
-
-- agent run（`commit_phase_version`）：从 `_resolve_phase_prompts` 拿默认或覆盖结果，写一行 `source='default'` 或 `'override'`。
-- user-edit version（`apply_phase_user_edit`）：PR-A4.2 修正 — 之前不写快照，导致 user-edit 版本被对照"无 prompt"会永远 `prompt_dirty`。现在 user-edit 也调 `_resolve_phase_prompts` 并写快照。
-
-### 2.A.6 `runnable_now` 的判定
-
-`PhaseHistoryEntry.runnable_now` 仅在 run 处于该 phase 的"可启动前置态"时为 true。后端用 `phase_rerun.PHASE_INPUT_STATES` 映射（如 `synthesizer` 的前置态是 `USER_DEEP_DIVE_REVIEW`），同时排除所有 `*_RUNNING` 态以防 double-start。前端 `derivePrimaryActions` 仅在 `runnable_now == true` 时才暴露 `run_now` 主操作。
-
-### 2.A.7 `branches.stale_from_phase` 兼容字段
-
-PR-A2 引入的 `branches.stale_from_phase` 单指针字段不再是 phase-history modal 的状态权威：本节描述的 4-状态计算 / 3-flag 推导才是。但**遗留路径仍在读写它**：
-
-读取路径：
-- `WorkspacePage.tsx::StaleBanner`（`run?.stale_from_phase` line ~1762）+ `BranchSwitcher` 分支条目末尾的 `●` 标记（line ~3975）。
-- `WorkspacePage.tsx` ProposalSubview 的 `hasDraftRun` 计算（line ~1879，跨 modal 用作"是否有未确认的 draft 运行"信号）。
-- `phase_user_edit.py::apply_phase_user_edit`（line ~227）调 `get_branch_stale()` 阻止编辑 stale phase 的下游产物。
-- `phase_rerun.py`（line ~206）在重跑前置依赖排序时参考它。
-
-写入路径：
-- `set_branch_stale` 在 fork / replace / commit / cascade activate 等路径上仍写它，确保上述读路径有数据。
-
-它是 **兼容路径上的源**而非 cache。彻底删除前需要先把上述 4 条读路径全切到 3-flag 计算（或 phase-history payload），可作为 PR-A5（或下次 schema 大改）的子目标。
-
-`backend/src/autoessay/main.py` 中 `_PHASE_RUNNERS` 的实际顺序：
+Diamond lineage example:
 
 ```
-proposal → scout → curator → synthesizer → tension_extraction → framework_lens
-→ ideator → drafter → stylist → final_rewrite → critic → integrity → exports
+scout v1 ---+---> curator v1 ---> synthesizer v1
+            |
+            +---> ideator v1
 ```
 
-`tension_extraction` 默认关闭，关闭时主路径从 `synthesizer` 直接进入 `framework_lens` 或 `ideator`。`final_rewrite` 默认开启；当开启时，`POST /critic` 先进入 `REWRITE_RUNNING`，完成 polish loop + critic loop 后再进入 `CRITIC_RUNNING`。`exports` 阶段的模块文件名是 `agents/exporter.py`，但注册的 phase 名是 `exports`。
+After switching scout to another version, `_cascade_phase_after_upstream_change` processes each downstream phase in `_PHASE_RUNNERS` order:
 
-每个阶段的职责：
+1. Compute the current upstream head vector, `expected = {upstream_phase: RunHead.version_id, ...}`.
+2. Scan `done` candidates for the phase within `reachable_pv_ids_for_branch(branch)`, including inherited fork roots.
+3. Apply `_lineage_matches(candidate.lineage, expected)`. The comparison must be exact equality, not a subset, or historical diamond branches can match incorrectly.
+4. If multiple candidates match, choose the largest `version_no`; if none match, `DELETE FROM run_heads WHERE (run, branch, phase) = ...`.
+5. File materialization (purging legacy paths and restoring new head artifacts) runs only for downstream phases touched by the cascade. The upstream phase is not modified.
 
-| 阶段 | 输入 | 输出 | 主要文件 |
+### 2.A.5 Immutable Prompt Snapshots
+
+`phase_version_prompts` stores prompt snapshots per phase version. The primary key is `(phase_version_id, prompt_key)`; `source` is a checked column with values `'default'` or `'override'`, not part of the key. Rows are read-only after insertion, and `prompt_dirty` compares drafts against these snapshots.
+
+There are two write paths:
+
+- Agent run (`commit_phase_version`): `_resolve_phase_prompts` selects default or override content, passes it to the agent, and writes a snapshot row with `source='default'` or `source='override'`.
+- User-edit version (`apply_phase_user_edit`): user-edit versions also call `_resolve_phase_prompts` and write prompt snapshots, so they do not stay permanently `prompt_dirty` by comparing against a missing prompt.
+
+### 2.A.6 `runnable_now`
+
+`PhaseHistoryEntry.runnable_now` is true only when the run is in that phase's startable predecessor state. The backend uses the `phase_rerun.PHASE_INPUT_STATES` mapping, such as `USER_DEEP_DIVE_REVIEW` for `synthesizer`, and excludes all `*_RUNNING` states to prevent double-starts. The frontend `derivePrimaryActions` helper exposes `run_now` only when `runnable_now == true`.
+
+### 2.A.7 `branches.stale_from_phase` Compatibility Field
+
+The PR-A2 `branches.stale_from_phase` single-pointer field is no longer authoritative for the phase-history modal. The four-state / three-flag derivation described above is authoritative there. Legacy paths still read and write it:
+
+Read paths:
+
+- `WorkspacePage.tsx::StaleBanner` and the branch-switcher marker.
+- `WorkspacePage.tsx` `ProposalSubview` `hasDraftRun`, used across modals as a signal that an unconfirmed draft run exists.
+- `phase_user_edit.py::apply_phase_user_edit`, which calls `get_branch_stale()` to block editing downstream artifacts of a stale phase.
+- `phase_rerun.py`, which still references it while ordering rerun prerequisites.
+
+Write paths:
+
+- `set_branch_stale` still writes it from fork, replace, commit, and cascade-activate paths so legacy reads remain meaningful.
+
+It is a compatibility source, not merely a cache. Removing it requires first moving the above read paths to the three-flag calculation or the phase-history payload.
+
+The actual `_PHASE_RUNNERS` order in `backend/src/autoessay/main.py`:
+
+```
+proposal -> scout -> curator -> synthesizer -> tension_extraction -> framework_lens
+-> ideator -> drafter -> stylist -> final_rewrite -> critic -> integrity -> exports
+```
+
+`tension_extraction` is disabled by default. When disabled, the main path moves from `synthesizer` directly to `framework_lens` or `ideator`. `final_rewrite` is enabled by default; when enabled, `POST /critic` first enters `REWRITE_RUNNING`, completes the polish loop and critic loop, then enters `CRITIC_RUNNING`. The exports stage implementation file is `agents/exporter.py`, while the registered phase name is `exports`.
+
+Phase responsibilities:
+
+| Phase | Input | Output | Main files |
 |---|---|---|---|
-| proposal | 项目题目 + 领域 | 选题方案 markdown | `proposal/proposal.md` |
-| scout | 选题方案 | 候选文献 jsonl | `discovery/scout_report.md`、`discovery/skim_candidates.jsonl` |
-| curator | 候选文献 | shortlist + 全文 | `sources/shortlist.json`、`sources/fulltext/*.pdf` |
-| synthesizer | shortlist | 每条文献的 claim 列表 | `synthesis/claims.jsonl`、`synthesis/source_notes/*` |
-| tension_extraction | claims | 张力结构（可选） | `synthesis/tension_extraction.json` |
-| framework_lens | claims + proposal | 框架透镜信号 | `synthesis/framework_lens.json` |
-| ideator | claims + proposal | 候选写作角度 | `novelty/angle_cards.json` |
-| drafter | 选定角度 | 章节草稿 + claim\_map | `drafts/v???/manuscript.md`、`drafts/v???/claim_map.jsonl` |
-| stylist | 草稿 | 经修订的草稿 | `drafts/v???/style/*` |
-| final_rewrite | stylist 输出 | polish 后稿件 + critic-loop 选择稿 | `drafts/v???/polish/*`、`reviews/critic_loop.json` |
-| critic | 草稿 | 评审报告 | `reviews/*` |
-| integrity | 草稿 + claim\_map | 诚信报告 | `integrity/integrity_summary.json` |
-| exports | 已通过的草稿 | 多格式成稿 | `exports/manifest.json`、`exports/*.pdf` 等 |
+| proposal | Project title + domain | Topic proposal markdown | `proposal/proposal.md` |
+| scout | Topic proposal | Candidate literature jsonl | `discovery/scout_report.md`, `discovery/skim_candidates.jsonl` |
+| curator | Candidate literature | Shortlist + full text | `sources/shortlist.json`, `sources/fulltext/*.pdf` |
+| synthesizer | Shortlist | Claims per source | `synthesis/claims.jsonl`, `synthesis/source_notes/*` |
+| tension_extraction | Claims | Tension structure, optional | `synthesis/tension_extraction.json` |
+| framework_lens | Claims + proposal | Framework-lens signals | `synthesis/framework_lens.json` |
+| ideator | Claims + proposal | Candidate writing angles | `novelty/angle_cards.json` |
+| drafter | Selected angle | Section draft + claim map | `drafts/v???/manuscript.md`, `drafts/v???/claim_map.jsonl` |
+| stylist | Draft | Revised draft | `drafts/v???/style/*` |
+| final_rewrite | Stylist output | Polished manuscript + critic-loop selected draft | `drafts/v???/polish/*`, `reviews/critic_loop.json` |
+| critic | Draft | Review report | `reviews/*` |
+| integrity | Draft + claim map | Integrity report | `integrity/integrity_summary.json` |
+| exports | Accepted draft | Multi-format deliverables | `exports/manifest.json`, `exports/*.pdf`, etc. |
 
-## 4. 持久化
+## 4. Persistence
 
-四张关键表：
+Four key tables:
 
-- `phase_versions`：每次 phase 成功执行（含 vanilla 首跑，PR-A4.1b 起）一行，记录 `run_id` / `phase` / `version_no` / `branch_id` / `input_snapshot_hash` / `prompt_hash` 等。
-- `phase_version_prompts`：每个 phase\_version 的 prompt 快照，主键 `(phase_version_id, prompt_key)`；`source` 是 CHECK 列（取值 `'default'` / `'override'`）。详见 §2.A.5。
-- `run_heads`：每个 (run, branch, phase) 的当前 head 指针。
-- `branches`：分支元数据，包含 `parent_branch_id` / `forked_from_pv_id` / `is_active` / `stale_from_phase`（phase-history modal 不再以 `stale_from_phase` 为状态权威；遗留 StaleBanner / phase_rerun 仍读，详见 §2.A.7）。
+- `phase_versions`: one row per successful phase execution, including vanilla first runs. It records `run_id`, `phase`, `version_no`, `branch_id`, `input_snapshot_hash`, `prompt_hash`, and related metadata.
+- `phase_version_prompts`: prompt snapshots for each phase version. The primary key is `(phase_version_id, prompt_key)`; `source` is a checked column with values `'default'` or `'override'`. See Section 2.A.5.
+- `run_heads`: the current head pointer for each (run, branch, phase).
+- `branches`: branch metadata, including `parent_branch_id`, `forked_from_pv_id`, `is_active`, and `stale_from_phase`. The phase-history modal no longer treats `stale_from_phase` as authoritative, but legacy stale banners and rerun paths still read it; see Section 2.A.7.
 
-文件物化路径仍以 `run.run_dir / <legacy_dir>` 为主（`scout/`、`sources/`、`synthesis/`、`drafts/v???/` 等）；切换 head 与 fork 时按 `phase_version` 重新挂载文件。
+File materialization still uses `run.run_dir / <legacy_dir>` paths such as `scout/`, `sources/`, `synthesis/`, and `drafts/v???/`. Switching heads and forking remount files from `phase_version` artifacts.
 
-## 5. 提示词覆盖（Stage 2.B + 3.A）
+## 5. Prompt Overrides (Stage 2.B + 3.A)
 
-`backend/src/autoessay/prompts.py` 的 `_REGISTRY` 是 `(phase, prompt_key) → PromptSpec` 的字典。当前 16 条：
+`backend/src/autoessay/prompts.py` stores `_REGISTRY` as a `(phase, prompt_key) -> PromptSpec` dictionary. It currently contains 16 entries:
 
-| phase | 支持的 prompt_key |
+| phase | Supported `prompt_key` values |
 |---|---|
 | synthesizer | main |
 | ideator | main |
@@ -235,147 +245,147 @@ proposal → scout → curator → synthesizer → tension_extraction → framew
 | stylist | main, repolish |
 | curator | ranking |
 
-每个 key 注册一段静态默认文本（`default_content`）。用户在 UI 编辑后保存到 `phase_prompt_drafts`。重跑时 `_resolve_phase_prompts` 把 (默认或覆盖) 的解析结果传给 agent，并写入 `phase_version_prompts` 作为版本快照。
+Each key registers static default text in `default_content`. User edits are saved into `phase_prompt_drafts`. On rerun, `_resolve_phase_prompts` passes the resolved default or override content to the agent and writes it into `phase_version_prompts` as a version snapshot.
 
-API 形态：
+API shape:
 
-- `GET /api/runs/{run_id}/phases/{phase}/prompt[?prompt_key=]`：返回默认+草稿；省略 prompt\_key 时若 `(phase, "main")` 不支持但有其他 key 则 fall back 到首个 key（discovery fallback，Stage 3.A.4）；显式空串 `?prompt_key=` 严格 404。
-- `PUT .../prompt`：保存或删除当前 (phase, prompt\_key) 草稿。
-- `POST .../rerun`：重跑该阶段，body 可带 `draft_hash` + `prompt_key` 做并发检查。
+- `GET /api/runs/{run_id}/phases/{phase}/prompt[?prompt_key=]`: returns default plus draft content. If `prompt_key` is omitted and `(phase, "main")` is unsupported but another key exists, the endpoint falls back to the first key. An explicit empty string `?prompt_key=` returns strict 404.
+- `PUT .../prompt`: saves or deletes the current `(phase, prompt_key)` draft.
+- `POST .../rerun`: reruns the phase. The body may include `draft_hash` and `prompt_key` for concurrency checks.
 
-## 6. Memory 与 Hooks
+## 6. Memory And Hooks
 
-LLM 调用走 `harness/run_llm_step`，支持 pre/post hook 链。常见 hook：
+LLM calls go through `harness/run_llm_step` and support pre/post hook chains. Common hooks:
 
-- `memory_pre_llm`（`autoessay.memory.make_memory_pre_llm_hook`）：从 `appleseed-memory` 读取相关记忆塞进 system message。
-- `citation_whitelist`（drafter）：检查输出 claim\_map 中的 source\_id 都在 approved 集合内。
-- `local_dedup`（drafter）：检查段落与本地语料的 n-gram 重叠度。
-- `ngram_guard`（stylist）：检查修订后的段落是否抄袭了 prior-paper 的字面表达。
-- audit writer：把请求/响应/parse 结果写到 `run_dir/audit/*.jsonl`。
+- `memory_pre_llm` (`autoessay.memory.make_memory_pre_llm_hook`): reads relevant memory from `appleseed-memory` and inserts it into the system message.
+- `citation_whitelist` (drafter): checks that source IDs in the output `claim_map` are in the approved set.
+- `local_dedup` (drafter): checks n-gram overlap between paragraphs and local corpora.
+- `ngram_guard` (stylist): checks whether revised paragraphs copy prior-paper wording too closely.
+- Audit writer: writes request, response, and parse results to `run_dir/audit/*.jsonl`.
 
-## 7. 运行时防护（Stage 3.E follow-up）
+## 7. Runtime Guards
 
-两个 prod 事故（`run_18b9e31c...`：先是用户没选 angle 直接点 drafter → drafter 11ms 后 FAIL_FIXABLE；接着 drafter 跑 1h、6/8 段成功但 2 段 schema 校验失败，整 phase 又被判 FAIL_FIXABLE）触发了一次 codex 全面审计 + 4 个 PR 的运行时弹性整改。
+A runtime resilience review exposed two classes of issues: starting downstream phases without required user choices, and failing a whole drafter phase when only some sections failed schema validation. Follow-up work narrowed these cases into explicit readiness checks, concurrency guards, and degraded-completion behavior.
 
-四层防护（按代码路径自上而下）：
+Four guard layers, from entrypoint down:
 
-### 7.1 Phase 共享 readiness 注册表
+### 7.1 Shared Phase Readiness Registry
 
-文件：`backend/src/autoessay/phase_readiness.py`。每个 phase 一个 `<phase>_ready(run, session) -> (ok, reason)`：
+File: `backend/src/autoessay/phase_readiness.py`. Each phase has a `<phase>_ready(run, session) -> (ok, reason)` function:
 
-| phase | 校验内容 |
+| phase | Checks |
 |---|---|
-| curator | `discovery/skim_candidates.jsonl` 或 `sources/shortlist.json` 至少存在一个非空 |
-| synthesizer | `sources/shortlist.json` 非空 |
-| ideator | `synthesis/claims.jsonl` 非空 |
-| drafter | `has_selected_angle`（`novelty/selected_thesis.json` 或最近的 `USER_NOVELTY_REVIEW` checkpoint 含非空 `angle_id`） |
-| stylist | `stylist_artifacts_ready`（`drafts/v???/manuscript.md` 非空 + `claim_map.jsonl` + `citations.bib`） |
-| critic | `drafts/v???/style/paper_styled.md` 非空 |
+| curator | `discovery/skim_candidates.jsonl` or `sources/shortlist.json` has at least one non-empty source |
+| synthesizer | `sources/shortlist.json` is non-empty |
+| ideator | `synthesis/claims.jsonl` is non-empty |
+| drafter | `has_selected_angle` (`novelty/selected_thesis.json` or latest `USER_NOVELTY_REVIEW` checkpoint has a non-empty `angle_id`) |
+| stylist | `stylist_artifacts_ready` (`drafts/v???/manuscript.md` is non-empty, with `claim_map.jsonl` and `citations.bib`) |
+| critic | `drafts/v???/style/paper_styled.md` is non-empty |
 | integrity | `latest_external_scan_decision.approve == True` |
-| exports | `drafts/v???/style/paper_styled.md` 非空 |
+| exports | `drafts/v???/style/paper_styled.md` is non-empty |
 
-`assert_phase_ready` 把 `(ok, reason)` 转换为 409 + `detail`。所有 `start_*` 和 `rerun_phase` 都调用同一个 `assert_phase_ready`，所以失败恢复路径不会绕过 `start_*` 的守卫。
+`assert_phase_ready` converts `(ok, reason)` into HTTP 409 with `detail`. All `start_*` and `rerun_phase` paths call the same `assert_phase_ready`, so recovery paths cannot bypass the normal `start_*` guard.
 
-文献阶段还有两条额外强约束：`start_curator` 要求 latest valid `USER_SEARCH_REVIEW` source-review checkpoint；`start_synthesizer` 要求 latest valid `USER_DEEP_DIVE_REVIEW` source-review checkpoint。checkpoint 的 `decision_payload` 可存 dict 或 list 形态的 source ids；无 checkpoint、空选择、过期 artifact 都会按 409 处理。
+The literature phases add two stricter constraints: `start_curator` requires the latest valid `USER_SEARCH_REVIEW` source-review checkpoint, and `start_synthesizer` requires the latest valid `USER_DEEP_DIVE_REVIEW` source-review checkpoint. `decision_payload` may store source IDs as a dict or list. Missing checkpoints, empty selections, and stale artifacts are all handled as 409s.
 
-`activate_phase_version` 不调 readiness（它只翻 head pointer，不重跑 agent）。
+`activate_phase_version` does not call readiness because it only moves a head pointer and does not rerun an agent.
 
-### 7.2 Drafter 容错完成
+### 7.2 Drafter Degraded Completion
 
-文件：`backend/src/autoessay/agents/drafter.py`，单 section 重试预算 `AUTOESSAY_DRAFTER_MAX_CORRECTIVE_RETRIES`（默认 4）。退出语义：
+File: `backend/src/autoessay/agents/drafter.py`. Each section has a corrective retry budget controlled by `AUTOESSAY_DRAFTER_MAX_CORRECTIVE_RETRIES`, default 4. Exit semantics:
 
-| stub 数 / 总段数 | severity | run state |
+| Stub count / total sections | severity | run state |
 |---|---|---|
-| 0 / N | `null`（无） | `phase_done` |
-| 1 ≤ s ≤ N/2 | `amber_minor` | `phase_done` |
+| 0 / N | `null` | `phase_done` |
+| 1 <= s <= N/2 | `amber_minor` | `phase_done` |
 | N/2 < s < N | `amber_major` | `phase_done` |
 | s == N | `fail_all_stubbed` | `FAILED_FIXABLE` |
 
-部分 stub 不再算 phase 失败，下游 stylist 可以照常运行。`draft_metadata.json` 加入 `section_statuses[].is_stubbed` 与 `stubbed_section_ids`，UI 据此渲染 amber badge。
+Partial stubs no longer fail the phase. Downstream stylist can continue. `draft_metadata.json` includes `section_statuses[].is_stubbed` and `stubbed_section_ids`, which the UI renders as amber badges.
 
-### 7.3 原子 phase-start 锁
+### 7.3 Atomic Phase-Start Lock
 
-文件：`backend/src/autoessay/phase_lock.py`，alembic `014_phase_lock`。三列：
+File: `backend/src/autoessay/phase_lock.py`, alembic `014_phase_lock`. Three columns:
 
 ```sql
-runs.active_phase_lock              VARCHAR(64)  -- 当前持锁的 phase 名
-runs.active_phase_lock_job_id       VARCHAR(64)  -- 持锁人 token
-runs.active_phase_lock_claimed_at   DATETIME     -- 起占时间，运维可见性
+runs.active_phase_lock              VARCHAR(64)  -- phase currently holding the lock
+runs.active_phase_lock_job_id       VARCHAR(64)  -- owner token
+runs.active_phase_lock_claimed_at   DATETIME     -- operational visibility
 ```
 
-获取（`claim_phase_lock`）：单行 `UPDATE runs SET ... WHERE id=:run_id AND active_phase_lock IS NULL`，rowcount=0 即占用失败 → 409。释放（`release_phase_lock`）：owner-checked，`UPDATE ... WHERE active_phase_lock=:phase AND active_phase_lock_job_id=:job_id`，crash 后归来的旧 worker 不会清掉新锁。
+Acquire (`claim_phase_lock`): one-row `UPDATE runs SET ... WHERE id=:run_id AND active_phase_lock IS NULL`; `rowcount=0` means busy and returns 409. Release (`release_phase_lock`): owner-checked `UPDATE ... WHERE active_phase_lock=:phase AND active_phase_lock_job_id=:job_id`, so an old worker returning after a crash cannot clear a newer lock.
 
-`run_X` agent 公共入口都 `with phase_lock_release_on_exit(run_id, phase, lock_token, session=db_session):` 包裹，无论成功 / FAIL_FIXABLE / 异常都释放。`session=db_session` 路径让 sync-worker 模式（含 tests）使用同一会话避开 cross-DB 写。
+All `run_X` agent entrypoints wrap their bodies with `with phase_lock_release_on_exit(run_id, phase, lock_token, session=db_session):`; success, `FAIL_FIXABLE`, and exceptions all release. Passing `session=db_session` lets sync-worker mode, including tests, use the same session and avoid cross-database writes.
 
-工作流：
+Workflow:
 
 ```
-start_drafter → assert_phase_ready → claim_phase_lock(token=T1)
-              → enqueue_drafter_job(run_id, lock_token=T1)
-              → 200 Accepted
+start_drafter -> assert_phase_ready -> claim_phase_lock(token=T1)
+              -> enqueue_drafter_job(run_id, lock_token=T1)
+              -> 200 Accepted
 
-worker pickup → run_drafter(run_id, lock_token=T1)
-              → with phase_lock_release_on_exit: ... agent body ...
-              → finally: release_phase_lock WHERE job_id=T1
+worker pickup -> run_drafter(run_id, lock_token=T1)
+              -> with phase_lock_release_on_exit: ... agent body ...
+              -> finally: release_phase_lock WHERE job_id=T1
 ```
 
-逃生口：`POST /api/runs/{id}/clear-phase-lock` 调用 `force_clear_phase_lock`（无 owner check），写一条 `phase_lock_force_cleared` 审计事件。
+Escape hatch: `POST /api/runs/{id}/clear-phase-lock` calls `force_clear_phase_lock` without owner checks and writes a `phase_lock_force_cleared` audit event.
 
-`RunResponse.active_phase_lock: ActivePhaseLockResponse | None` 把 `{phase, job_id, claimed_at}` 暴露给前端，UI 据此渲染"phase X 已运行 N 分钟"+ clear 按钮。
+`RunResponse.active_phase_lock: ActivePhaseLockResponse | None` exposes `{phase, job_id, claimed_at}` to the frontend, so the UI can show "phase X has been running for N minutes" plus a clear button.
 
-### 7.4 失败状态恢复 UI
+### 7.4 Failure Recovery UI
 
-`frontend/src/pages/WorkspacePage.tsx::FailureResolutionBanner`，按状态分发动作。SSE 收到 `state_transition` / `phase_failed` 后会刷新 banner；URL 直接进入 blocked run 时，`resolveLandingSubview` 会按 failed phase 打开对应 tab。
+`frontend/src/pages/WorkspacePage.tsx::FailureResolutionBanner` dispatches actions by state. SSE `state_transition` and `phase_failed` events refresh the banner; direct navigation into a blocked run makes `resolveLandingSubview` open the relevant tab for the failed phase.
 
-| 状态 | 动作 |
+| State | Action |
 |---|---|
-| `FAILED_FIXABLE` | "Retry phase" → `/phases/{phase}/retry` backend resolver |
-| `FAILED_VENDOR` | "Retry external scan" → `startIntegrity` / "Skip integrity" → `transitionRun(USER_FINAL_ACCEPTANCE)` |
-| `FAILED_NEEDS_USER` | amber 文案，依赖 payload 上下文（暂无通用动作） |
-| `FAILED_POLICY` | 禁用直接 retry；走 force-approve 或 phase review 专用路径 |
-| `CANCELLED` | amber 文案，无动作（按设计是终态） |
+| `FAILED_FIXABLE` | "Retry phase" -> `/phases/{phase}/retry` backend resolver |
+| `FAILED_VENDOR` | "Retry external scan" -> `startIntegrity`; "Skip integrity" -> `transitionRun(USER_FINAL_ACCEPTANCE)` |
+| `FAILED_NEEDS_USER` | Amber copy that depends on payload context; no generic action yet |
+| `FAILED_POLICY` | Direct retry disabled; use force-approve or phase-review-specific path |
+| `CANCELLED` | Amber copy only; designed as terminal |
 
-`DegradedDraftBanner` 处理 7.2 的 amber 部分 stub 信号——读 `lastEvent.payload.severity` 决定是 minor 还是 major。
+`DegradedDraftBanner` handles the amber partial-stub signal from Section 7.2 by reading `lastEvent.payload.severity` to distinguish minor from major.
 
-### 7.5 文献全文与用户上传保护
+### 7.5 Full-Text And User Upload Protection
 
-文献全文获取分两层：
+Full-text retrieval has two layers:
 
-1. `curator` 先判断候选是否已有 direct PDF URL；没有时调用 fulltext resolver，对 DOI / landing URL 做有界 HTML 解析和有界 browser fallback，找到 direct PDF 后再交给 `pdf_fetcher`。
-2. `pdf_fetcher` 先走 `httpx`，失败后按 `AUTOESSAY_PDF_FETCH_BROWSER_FALLBACK`（默认 true）尝试 headless Chromium。
+1. `curator` first checks whether a candidate already has a direct PDF URL. If not, it calls a full-text resolver, bounded HTML parsing, and a bounded browser fallback to find a direct PDF before handing it to `pdf_fetcher`.
+2. `pdf_fetcher` tries `httpx` first, then uses headless Chromium when `AUTOESSAY_PDF_FETCH_BROWSER_FALLBACK` is enabled, default true.
 
-用户上传文件走 `sources/uploads/` 和 `sources/user_upload_sources.json`。Scout / curator rerun 是 replacement 语义，但只清理非 user-owned `sources/fulltext/` cache；用户上传 PDF 不在 cascade purge 范围。rerun 前端会弹 destructive confirm，列出受影响的候选、shortlist、manual upload request 和下游产物数量，并说明 user-uploaded PDFs retained。
+User-uploaded files live under `sources/uploads/` with metadata in `sources/user_upload_sources.json`. Scout and curator reruns use replacement semantics but only clean non-user-owned `sources/fulltext/` cache files. User-uploaded PDFs are outside cascade purge scope. Before rerun, the frontend shows a destructive confirmation listing affected candidates, shortlist entries, manual upload requests, and downstream artifact counts, while noting that user-uploaded PDFs are retained.
 
-### 7.6 final_rewrite 三层质量路径
+### 7.6 final_rewrite Quality Path
 
-生产默认 `AUTOESSAY_FINAL_REWRITE_ENABLED=1`。`start_critic` 在 `USER_REVISION_REVIEW` 时会先 claim `final_rewrite` lock：
+The deployable setting `AUTOESSAY_FINAL_REWRITE_ENABLED=1` enables the final_rewrite path. When `start_critic` is called from `USER_REVISION_REVIEW`, it first claims the `final_rewrite` lock:
 
-1. **polish loop**：根据 v2 expert critic 输出做最多 bounded attempts 的聚焦改写，audit 写入 `drafts/v???/polish/polish_loop.json`。
-2. **critic loop**：对 candidate 做最多 `AUTOESSAY_CRITIC_LOOP_ITERATIONS` 次 review→rewrite，按质量指标选择最佳稿件。
-3. **north-star gate sidecar**：在 critic phase 内记录独立 blind A/B 质量指标，写入 audit/event；pass/fail/unscorable 均不阻断用户流程。
+1. Polish loop: uses v2 expert critic output for bounded targeted rewrite attempts and writes audit data to `drafts/v???/polish/polish_loop.json`.
+2. Critic loop: runs review and rewrite for up to `AUTOESSAY_CRITIC_LOOP_ITERATIONS` iterations and chooses the best draft by quality metrics.
+3. North-star gate sidecar: records independent blind A/B quality metrics inside the critic phase. Pass, fail, and unscorable outcomes do not block the user flow.
 
-Exports policy fail 会把 failure guidance 作为新的 blocker 回到 polish executor，最多 `AUTOESSAY_EXPORTS_POLICY_MAX_POLISH_RETRIES` 次；仍失败才保持 `FAILED_POLICY`。
+If exports fails policy checks, failure guidance becomes a new blocker for the polish executor for up to `AUTOESSAY_EXPORTS_POLICY_MAX_POLISH_RETRIES` attempts. If it still fails, the run remains `FAILED_POLICY`.
 
-## 8. 前端可测试性约定（testid）
+## 8. Frontend Testability Contract (`testid`)
 
-所有新加的可交互 UI 元素 —— `<button>`、`<input>`、`<textarea>`、`<select>`、tab 按钮、模态对话框 —— **必须**带 `data-testid` 属性，方便 Playwright e2e spec 通过 `page.locator('[data-testid="..."]')` 而不是 i18n 字符串定位。
+Every new interactive UI element--`<button>`, `<input>`, `<textarea>`, `<select>`, tab button, and modal dialog--must include a `data-testid` attribute so Playwright e2e specs can use `page.locator('[data-testid="..."]')` instead of i18n strings.
 
-命名约定：
+Naming conventions:
 
-- 短横线连接：`failure-resolution-banner`、`prompt-save-and-rerun`、`history-modal-close`
-- 模板化（动态生成）：`phase-action-${action.key}`、`workspace-tab-${tab.id}`、`history-version-${phase}-${entry.version_no}`
-- 行为后缀：`-button`、`-modal`、`-textarea` 仅在歧义时加；纯 testid 优先
+- Use kebab case: `failure-resolution-banner`, `prompt-save-and-rerun`, `history-modal-close`.
+- Use templates for dynamic elements: `phase-action-${action.key}`, `workspace-tab-${tab.id}`, `history-version-${phase}-${entry.version_no}`.
+- Add behavioral suffixes such as `-button`, `-modal`, or `-textarea` only when needed to avoid ambiguity; prefer clean test IDs.
 
-数据属性扩展：除 `data-testid` 外，关键状态也用 `data-*` 暴露给 spec：
+State attributes: in addition to `data-testid`, expose important state through `data-*` attributes:
 
-- `data-run-state`、`data-run-id` 在 `workspace-root`（spec 等待状态机推进的入口）
-- `data-last-event-type`、`data-last-event-phase`、`data-last-event-at`（事件流的可观测点）
-- `data-failed-phase`、`data-failure-state`（FailureResolutionBanner）
-- `data-active="true|false"`（tab、版本行）
-- `data-is-active`、`data-version-id`、`data-version-no`、`data-status`（PhaseVersionRow）
+- `data-run-state` and `data-run-id` on `workspace-root`, the entrypoint for specs waiting on state-machine progress.
+- `data-last-event-type`, `data-last-event-phase`, and `data-last-event-at` for event-stream observability.
+- `data-failed-phase` and `data-failure-state` on `FailureResolutionBanner`.
+- `data-active="true|false"` for tabs and version rows.
+- `data-is-active`, `data-version-id`, `data-version-no`, and `data-status` on `PhaseVersionRow`.
 
-写新组件时如发现既有 i18n 字符串能被 spec 抓但 testid 不齐，**补 testid** 比改 spec 字符串依赖更耐改。
+When adding components, if an existing i18n string is locatable but test IDs are incomplete, add test IDs instead of making specs depend on copy.
 
-## 9. 部署形态
+## 9. Deployment Shape
 
-见 `DEPLOYMENT.md`。
+See `DEPLOYMENT.md`.

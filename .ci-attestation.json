@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "timestamp": "2026-05-21T11:15:15Z",
+  "timestamp": "2026-05-21T12:18:37Z",
   "result": "pass",
-  "test_log_sha256": "e10a3952c0a11a94788ffc60d06363b74ca6391d9e3d052c1fb5f7a3a9cc5f48",
+  "test_log_sha256": "14cee4d8824fe9f3e18ef9fe9f04e1bd35de761d8ca85875aa2580ff3753b9d5",
   "pytest_passed": 1859,
   "vitest_passed": 208,
   "playwright_passed": 0,
@@ -11,6 +11,6 @@
     "python": "3.10.12",
     "node": "24.15.0"
   },
-  "info_only_head_sha_at_sweep": "0f0aec94ca6e9793a634cc7ff5e9aeaf66357796",
-  "info_only_tree_sha_at_sweep": "881b1af35ed95ee5ea36a1b70ca34b263f6b4672"
+  "info_only_head_sha_at_sweep": "d2ea58b0937d464b5319f637f80ac2fdb2233a44",
+  "info_only_tree_sha_at_sweep": "5f754ee7f617998dc3fd9844b72d70567141f965"
 }

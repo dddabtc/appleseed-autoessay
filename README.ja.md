@@ -2,7 +2,9 @@
 
 **言語:** [English](README.md) | [中文](README.zh.md) | 日本語
 
-![Appleseed AutoEssay ワークスペースの流れ](docs/screenshots/deep/ja/08-workspace-loaded.png)
+<p align="center">
+  <img src="docs/screenshots/deep/ja/08-workspace-loaded.png" alt="Appleseed AutoEssay ワークスペースの流れ" width="800" />
+</p>
 
 ## 何ができるか
 
@@ -24,45 +26,63 @@ Appleseed AutoEssay は、学術原稿作成のためのオープンソースの
 
 `/runs/new` から run を開始し、分野、題名、原稿言語、生成モード、論文モード、research kernel を入力します。
 
-![新しい論文 run の作成](docs/screenshots/deep/ja/06-new-run-form.png)
+<p align="center">
+  <img src="docs/screenshots/deep/ja/06-new-run-form.png" alt="新しい論文 run の作成" width="800" />
+</p>
 
 ### 2. 生成モードを選ぶ
 
 Express mode は高速な下書き用のデフォルトです。Deep mode は 13 段階のワークフロー、確認点、より豊富なフェーズ成果物が必要な場合に使います。
 
-![Express と Deep のモード選択](docs/screenshots/express/ja/01-mode-selector.png)
+<p align="center">
+  <img src="docs/screenshots/express/ja/01-mode-selector.png" alt="Express と Deep のモード選択" width="800" />
+</p>
 
 ### 3. AI で Kernel を入力する
 
 Kernel は、執筆前に Appleseed が参照する小さな研究契約です。観察された問題、仮の問い、範囲、方法の希望、理論の希望、一次資料の状態を含みます。AI 入力ボタンは題名と分野から構造化された下書きを作るため、利用者は空欄からではなく編集から始められます。
 
-![AI が入力した research kernel](docs/screenshots/express/ja/02-kernel-form-filled.png)
+<p align="center">
+  <img src="docs/screenshots/express/ja/02-kernel-form-filled.png" alt="AI が入力した research kernel" width="800" />
+</p>
 
 ### 4. Express Mode
 
 Express mode は、設定済みの LLM ゲートウェイ上でおよそ 3-5 分の原稿作成を目指すモードです。実行中はワークスペースが明示的な `EXPRESS_RUNNING` 状態になります。完了後は transparency panel に、トークン使用量、監査状態、アウトライン、原稿プレビューが表示されます。
 
-![Express mode 実行中](docs/screenshots/express/ja/03-express-running.png)
+<p align="center">
+  <img src="docs/screenshots/express/ja/03-express-running.png" alt="Express mode 実行中" width="800" />
+</p>
 
-![Express transparency panel](docs/screenshots/express/ja/04-express-transparency.png)
+<p align="center">
+  <img src="docs/screenshots/express/ja/04-express-transparency.png" alt="Express transparency panel" width="800" />
+</p>
 
 ### 5. Deep Mode: 13 フェーズ
 
 Deep mode は長い状態機械に沿って進みます。proposal、scout、curator、synthesizer、framework lens、ideator、drafter、stylist、final rewrite、critic、integrity、final acceptance、export の流れです。ワークスペースでは、現在状態、フェーズ履歴、確認操作が見えるようになっています。
 
-![Deep mode ワークスペース状態](docs/screenshots/deep/ja/08-workspace-loaded.png)
+<p align="center">
+  <img src="docs/screenshots/deep/ja/08-workspace-loaded.png" alt="Deep mode ワークスペース状態" width="800" />
+</p>
 
 Proposal 画面では、本格的な資料処理と下書きに入る前に方向性を確認できます。
 
-![初期 proposal の確認](docs/screenshots/deep/ja/10-01-after-Generate-Initial-Proposal.png)
+<p align="center">
+  <img src="docs/screenshots/deep/ja/10-01-after-Generate-Initial-Proposal.png" alt="初期 proposal の確認" width="800" />
+</p>
 
 Integrity フェーズでは、最終承認の前に引用と監査の結果を確認できます。
 
-![Integrity findings](docs/screenshots/deep/ja/10-10-after-Accept-integrity-findings.png)
+<p align="center">
+  <img src="docs/screenshots/deep/ja/10-10-after-Accept-integrity-findings.png" alt="Integrity findings" width="800" />
+</p>
 
 Export フェーズでは、原稿と補助ファイルをまとめてダウンロードできます。
 
-![出力ファイルの準備完了](docs/screenshots/deep/ja/11-exports-done-cta.png)
+<p align="center">
+  <img src="docs/screenshots/deep/ja/11-exports-done-cta.png" alt="出力ファイルの準備完了" width="800" />
+</p>
 
 ### 6. 多言語対応
 

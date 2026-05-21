@@ -2,7 +2,9 @@
 
 **语言：** [English](README.md) | 中文 | [日本語](README.ja.md)
 
-![Appleseed AutoEssay 工作台流程截图](docs/screenshots/deep/zh/08-workspace-loaded.png)
+<p align="center">
+  <img src="docs/screenshots/deep/zh/08-workspace-loaded.png" alt="Appleseed AutoEssay 工作台流程截图" width="800" />
+</p>
 
 ## 它能做什么
 
@@ -24,45 +26,63 @@ Appleseed AutoEssay 是一个开源的学术论文生成工作流工具。它把
 
 在 `/runs/new` 创建运行：选择研究领域、题目、论文语言、生成模式、论文模式，并填写研究 kernel。
 
-![创建新的论文运行](docs/screenshots/deep/zh/06-new-run-form.png)
+<p align="center">
+  <img src="docs/screenshots/deep/zh/06-new-run-form.png" alt="创建新的论文运行" width="800" />
+</p>
 
 ### 2. 选择生成模式
 
 Express mode 是默认选项，适合先得到快速草稿。Deep mode 适合需要 13 个阶段、审阅点和更丰富阶段产物的写作流程。
 
-![Express 与 Deep 模式选择器](docs/screenshots/express/zh/01-mode-selector.png)
+<p align="center">
+  <img src="docs/screenshots/express/zh/01-mode-selector.png" alt="Express 与 Deep 模式选择器" width="800" />
+</p>
 
 ### 3. AI 帮我填 Kernel
 
 Kernel 是 Appleseed 写作前使用的精简研究契约，包含观察到的研究张力、临时问题、范围、方法偏好、理论偏好和一手材料状态。AI 帮我填会根据题目和领域生成结构化初稿，用户再编辑，而不是从空白表单开始。
 
-![AI 填好的研究 kernel](docs/screenshots/express/zh/02-kernel-form-filled.png)
+<p align="center">
+  <img src="docs/screenshots/express/zh/02-kernel-form-filled.png" alt="AI 填好的研究 kernel" width="800" />
+</p>
 
 ### 4. Express Mode
 
 Express mode 面向配置好 LLM 网关后的约 3-5 分钟快速出稿。运行时工作台保持明确的 `EXPRESS_RUNNING` 状态；完成后，transparency panel 会显示 token 使用量、审计状态、提纲地图和稿件预览。
 
-![Express mode 运行中](docs/screenshots/express/zh/03-express-running.png)
+<p align="center">
+  <img src="docs/screenshots/express/zh/03-express-running.png" alt="Express mode 运行中" width="800" />
+</p>
 
-![Express transparency panel](docs/screenshots/express/zh/04-express-transparency.png)
+<p align="center">
+  <img src="docs/screenshots/express/zh/04-express-transparency.png" alt="Express transparency panel" width="800" />
+</p>
 
 ### 5. Deep Mode：13 阶段流程
 
 Deep mode 会沿着更长的状态机推进：proposal、scout、curator、synthesizer、framework lens、ideator、drafter、stylist、final rewrite、critic、integrity、final acceptance 和 export。工作台会持续显示当前状态、阶段历史和审阅控制。
 
-![Deep mode 工作台状态](docs/screenshots/deep/zh/08-workspace-loaded.png)
+<p align="center">
+  <img src="docs/screenshots/deep/zh/08-workspace-loaded.png" alt="Deep mode 工作台状态" width="800" />
+</p>
 
 Proposal 页面让用户在进入更重的文献与起草流程前先检查方向。
 
-![初始 proposal 审阅](docs/screenshots/deep/zh/10-01-after-Generate-Initial-Proposal.png)
+<p align="center">
+  <img src="docs/screenshots/deep/zh/10-01-after-Generate-Initial-Proposal.png" alt="初始 proposal 审阅" width="800" />
+</p>
 
 Integrity 阶段会在最终接受前展示引用和审计发现。
 
-![Integrity findings](docs/screenshots/deep/zh/10-10-after-Accept-integrity-findings.png)
+<p align="center">
+  <img src="docs/screenshots/deep/zh/10-10-after-Accept-integrity-findings.png" alt="Integrity findings" width="800" />
+</p>
 
 Export 阶段会打包正文和配套文件，方便后续审阅与下载。
 
-![导出文件就绪](docs/screenshots/deep/zh/11-exports-done-cta.png)
+<p align="center">
+  <img src="docs/screenshots/deep/zh/11-exports-done-cta.png" alt="导出文件就绪" width="800" />
+</p>
 
 ### 6. 多语言支持
 
@@ -115,7 +135,7 @@ npm run dev
 ## 文档
 
 - [需求说明](docs/REQUIREMENTS.md)
-- [设计说明](docs/DESIGN.md)
+- [设计说明](docs/DESIGN.zh.md)
 - [系统说明](docs/explained/SYSTEM_EXPLAINED.zh.md)
 - [方法学参考](references/methodology.md)
 - [ADR-0003: 双模式论文生成](docs/adr/0003-dual-mode-manuscript-generation.md)

@@ -2,7 +2,9 @@
 
 **Languages:** English | [中文](README.zh.md) | [日本語](README.ja.md)
 
-![Appleseed AutoEssay workspace walkthrough](docs/screenshots/deep/en/08-workspace-loaded.png)
+<p align="center">
+  <img src="docs/screenshots/deep/en/08-workspace-loaded.png" alt="Appleseed AutoEssay workspace walkthrough" width="800" />
+</p>
 
 ## What It Does
 
@@ -24,45 +26,63 @@ There is no hosted public service attached to this repository and there are no d
 
 Start a run from `/runs/new` by choosing a domain, title, manuscript language, generation mode, paper mode, and research-kernel fields.
 
-![Create a new essay run](docs/screenshots/deep/en/06-new-run-form.png)
+<p align="center">
+  <img src="docs/screenshots/deep/en/06-new-run-form.png" alt="Create a new essay run" width="800" />
+</p>
 
 ### 2. Choose A Generation Mode
 
 Express mode is the default for quick drafts. Deep mode is available when you want the longer 13-phase workflow with review points and richer phase artifacts.
 
-![Express and Deep mode selector](docs/screenshots/express/en/01-mode-selector.png)
+<p align="center">
+  <img src="docs/screenshots/express/en/01-mode-selector.png" alt="Express and Deep mode selector" width="800" />
+</p>
 
 ### 3. Let AI Fill The Kernel
 
 The kernel is the compact research contract Appleseed uses before writing: observed puzzle, tentative question, scope, method preference, theory preference, and primary-material status. The AI fill button drafts these fields from the title and domain so the user edits a structured starting point instead of a blank form.
 
-![AI-filled research kernel](docs/screenshots/express/en/02-kernel-form-filled.png)
+<p align="center">
+  <img src="docs/screenshots/express/en/02-kernel-form-filled.png" alt="AI-filled research kernel" width="800" />
+</p>
 
 ### 4. Express Mode
 
 Express mode is designed for a roughly 3-5 minute manuscript pass on a configured LLM gateway. While it runs, the workspace stays in an explicit `EXPRESS_RUNNING` state; when it finishes, the transparency panel shows token usage, audit status, an outline map, and a manuscript preview.
 
-![Express mode running](docs/screenshots/express/en/03-express-running.png)
+<p align="center">
+  <img src="docs/screenshots/express/en/03-express-running.png" alt="Express mode running" width="800" />
+</p>
 
-![Express transparency panel](docs/screenshots/express/en/04-express-transparency.png)
+<p align="center">
+  <img src="docs/screenshots/express/en/04-express-transparency.png" alt="Express transparency panel" width="800" />
+</p>
 
 ### 5. Deep Mode: 13-Phase Workflow
 
 Deep mode walks through the longer state machine: proposal, scout, curator, synthesizer, framework lens, ideator, drafter, stylist, final rewrite, critic, integrity, final acceptance, and export. The workspace keeps the active state, phase history, and review controls visible.
 
-![Deep workspace state](docs/screenshots/deep/en/08-workspace-loaded.png)
+<p align="center">
+  <img src="docs/screenshots/deep/en/08-workspace-loaded.png" alt="Deep workspace state" width="800" />
+</p>
 
 The proposal screen gives the user an early direction check before deeper source and drafting work starts.
 
-![Initial proposal review](docs/screenshots/deep/en/10-01-after-Generate-Initial-Proposal.png)
+<p align="center">
+  <img src="docs/screenshots/deep/en/10-01-after-Generate-Initial-Proposal.png" alt="Initial proposal review" width="800" />
+</p>
 
 The integrity stage surfaces citation and audit findings before final acceptance.
 
-![Integrity findings](docs/screenshots/deep/en/10-10-after-Accept-integrity-findings.png)
+<p align="center">
+  <img src="docs/screenshots/deep/en/10-10-after-Accept-integrity-findings.png" alt="Integrity findings" width="800" />
+</p>
 
 The export stage packages the manuscript and supporting files for downstream review.
 
-![Export files ready](docs/screenshots/deep/en/11-exports-done-cta.png)
+<p align="center">
+  <img src="docs/screenshots/deep/en/11-exports-done-cta.png" alt="Export files ready" width="800" />
+</p>
 
 ### 6. Multi-Language UI
 
