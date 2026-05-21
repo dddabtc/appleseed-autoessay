@@ -11,6 +11,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "capture:help": "playwright test --config=playwright.screenshots.config.ts",
+    "capture:help:express": "playwright test e2e/help-screenshots-express.spec.ts --config=playwright.screenshots.config.ts",
     "capture:layout": "playwright test --config=playwright.layout.config.ts",
     "format": "prettier --check ."
   },

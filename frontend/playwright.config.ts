@@ -17,6 +17,7 @@ export default defineConfig({
     // via `npm run capture:help` (uses playwright.screenshots.config.ts);
     // writes large PNG assets and is not part of CI.
     "**/capture-screenshots.spec.ts",
+    "**/help-screenshots-express.spec.ts",
     // PR-J1 PC layout audit: walks 11 phase states for both zh+en
     // and writes screenshots to /tmp/layout-audit/. Run manually via
     // `npm run capture:layout` (uses playwright.layout.config.ts).
