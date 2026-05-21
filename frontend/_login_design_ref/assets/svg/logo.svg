@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- 月桂枝（金色）-->
+  <g stroke="#b59b66" stroke-width="1.4" stroke-linecap="round">
+    <path d="M6 50 Q12 38 16 32"/>
+    <path d="M52 50 Q46 38 42 32"/>
+    <ellipse cx="10" cy="44" rx="3" ry="1.6" fill="#b59b66" transform="rotate(-30 10 44)"/>
+    <ellipse cx="14" cy="38" rx="3" ry="1.6" fill="#b59b66" transform="rotate(-30 14 38)"/>
+    <ellipse cx="48" cy="44" rx="3" ry="1.6" fill="#b59b66" transform="rotate(30 48 44)"/>
+    <ellipse cx="44" cy="38" rx="3" ry="1.6" fill="#b59b66" transform="rotate(30 44 38)"/>
+  </g>
+  <!-- 罗马柱小书院 -->
+  <g stroke="#2f5d3a" stroke-width="1.6" fill="none">
+    <path d="M16 50 H48"/>
+    <path d="M14 46 H50"/>
+    <path d="M18 46 V22"/>
+    <path d="M24 46 V22"/>
+    <path d="M32 46 V22"/>
+    <path d="M40 46 V22"/>
+    <path d="M46 46 V22"/>
+    <path d="M14 22 H50"/>
+    <path d="M16 18 L32 10 L48 18 Z"/>
+  </g>
+</svg>

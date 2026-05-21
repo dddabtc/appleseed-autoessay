@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appleseed AutoEssay — Ancient Wisdom, Modern Writing</title>
+  <meta name="description" content="Appleseed AutoEssay helps scholars and students think deeper, write better, and achieve more with AI." />
+
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+
+  <!-- Google Fonts: 衬线标题 + 无衬线正文。需要离线时把链接换成本地字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <!-- ============== 装饰背景层（绝对定位，不影响布局） ============== -->
+  <div class="decor decor--plant" aria-hidden="true">
+    <img src="assets/svg/plant.svg" alt="" />
+  </div>
+  <div class="decor decor--mountain" aria-hidden="true">
+    <img src="assets/svg/mountain.svg" alt="" />
+  </div>
+  <div class="decor decor--calligraphy" aria-hidden="true">
+    <span class="cn-vertical">為學日益</span>
+    <span class="cn-vertical">為道日損</span>
+    <img class="seal" src="assets/svg/seal.svg" alt="" />
+  </div>
+
+  <!-- ============== 顶部导航 ============== -->
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="Appleseed AutoEssay home">
+      <img class="brand__logo" src="assets/svg/logo.svg" alt="" />
+      <span class="brand__text">
+        <span class="brand__name">Appleseed AutoEssay</span>
+        <span class="brand__tagline">AI-POWERED ACADEMIC CREATION</span>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="主导航">
+      <ul class="nav__list">
+        <li><a class="nav__link is-active" href="#">Home</a></li>
+        <li><a class="nav__link" href="#">Features</a></li>
+        <li><a class="nav__link" href="#">Pricing</a></li>
+        <li><a class="nav__link nav__link--has-caret" href="#">Solutions</a></li>
+        <li><a class="nav__link nav__link--has-caret" href="#">Resources</a></li>
+        <li><a class="nav__link" href="#">About</a></li>
+      </ul>
+    </nav>
+
+    <div class="header-actions">
+      <button class="lang-switch" type="button" aria-label="切换语言">
+        <svg class="lang-switch__globe" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <span>EN</span>
+        <span class="lang-switch__caret" aria-hidden="true">▾</span>
+      </button>
+      <a class="btn btn--primary btn--sm" href="#">Sign Up</a>
+    </div>
+
+    <button class="hamburger" type="button" aria-label="菜单" aria-expanded="false" aria-controls="mobile-nav">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <!-- 移动端折叠菜单 -->
+  <div class="mobile-nav" id="mobile-nav" hidden>
+    <ul>
+      <li><a href="#">Home</a></li>
+      <li><a href="#">Features</a></li>
+      <li><a href="#">Pricing</a></li>
+      <li><a href="#">Solutions</a></li>
+      <li><a href="#">Resources</a></li>
+      <li><a href="#">About</a></li>
+    </ul>
+    <div class="mobile-nav__actions">
+      <a class="btn btn--primary" href="#">Sign Up</a>
+    </div>
+  </div>
+
+  <!-- ============== 主体区域 ============== -->
+  <main class="page">
+    <section class="hero">
+      <!-- 左：标题 + 描述 + CTA -->
+      <div class="hero__copy">
+        <span class="hero__eyebrow" aria-hidden="true">
+          <img src="assets/svg/leaf.svg" alt="" />
+          <i></i>
+        </span>
+        <h1 class="hero__title">
+          Ancient Wisdom,<br />
+          Modern <span class="hero__title-accent">Writing.</span>
+        </h1>
+        <p class="hero__desc">
+          Appleseed AutoEssay helps scholars and students think deeper,
+          write better, and achieve more with AI.
+        </p>
+        <div class="hero__ctas">
+          <a class="btn btn--primary btn--lg" href="#">
+            Get Started
+            <span class="btn__arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="link link--with-caret" href="#">Learn More <span aria-hidden="true">›</span></a>
+        </div>
+      </div>
+
+      <!-- 右：登录卡片 -->
+      <aside class="login-card" aria-label="登录">
+        <div class="login-card__crest" aria-hidden="true">
+          <img src="assets/svg/sprout.svg" alt="" />
+        </div>
+        <h2 class="login-card__title">Welcome Back</h2>
+        <p class="login-card__sub">Sign in to continue to Appleseed AutoEssay</p>
+
+        <form class="login-form" novalidate>
+          <label class="field">
+            <span class="field__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            </span>
+            <input type="text" name="username" placeholder="Username or Email" autocomplete="username" />
+          </label>
+
+          <label class="field">
+            <span class="field__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18"><rect x="4" y="10" width="16" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            </span>
+            <input type="password" name="password" placeholder="Password" autocomplete="current-password" />
+            <button type="button" class="field__toggle" aria-label="显示密码" data-toggle-password>
+              <svg class="icon-eye" viewBox="0 0 24 24" width="18" height="18"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><line class="icon-eye__slash" x1="4" y1="20" x2="20" y2="4" stroke="currentColor" stroke-width="1.6"/></svg>
+            </button>
+          </label>
+
+          <div class="login-form__row">
+            <label class="checkbox">
+              <input type="checkbox" />
+              <span class="checkbox__box" aria-hidden="true"></span>
+              <span>Remember me</span>
+            </label>
+            <a class="link link--muted" href="#">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--block">Sign In</button>
+
+          <div class="divider"><span>or continue with</span></div>
+
+          <div class="oauth">
+            <button type="button" class="oauth__btn" aria-label="Sign in with Google">
+              <img src="assets/svg/oauth-google.svg" alt="" />
+            </button>
+            <button type="button" class="oauth__btn" aria-label="Sign in with Microsoft">
+              <img src="assets/svg/oauth-microsoft.svg" alt="" />
+            </button>
+            <button type="button" class="oauth__btn" aria-label="Sign in with SSO">
+              <img src="assets/svg/oauth-sso.svg" alt="" />
+            </button>
+          </div>
+        </form>
+      </aside>
+    </section>
+
+    <!-- ============== 功能卡片 ============== -->
+    <section class="features" aria-label="功能">
+      <a class="feature-card" href="#">
+        <span class="feature-card__icon" aria-hidden="true">
+          <img src="assets/svg/icon-feather.svg" alt="" />
+        </span>
+        <span class="feature-card__body">
+          <span class="feature-card__title">AI Writing</span>
+          <span class="feature-card__desc">Generate, refine, and elevate academic content with AI.</span>
+        </span>
+        <span class="feature-card__chevron" aria-hidden="true">›</span>
+      </a>
+
+      <a class="feature-card" href="#">
+        <span class="feature-card__icon" aria-hidden="true">
+          <img src="assets/svg/icon-research.svg" alt="" />
+        </span>
+        <span class="feature-card__body">
+          <span class="feature-card__title">Research</span>
+          <span class="feature-card__desc">Organize sources, analyze papers, and build knowledge.</span>
+        </span>
+        <span class="feature-card__chevron" aria-hidden="true">›</span>
+      </a>
+
+      <a class="feature-card" href="#">
+        <span class="feature-card__icon" aria-hidden="true">
+          <img src="assets/svg/icon-multilingual.svg" alt="" />
+        </span>
+        <span class="feature-card__body">
+          <span class="feature-card__title">Multilingual</span>
+          <span class="feature-card__desc">Write and translate across languages with precision.</span>
+        </span>
+        <span class="feature-card__chevron" aria-hidden="true">›</span>
+      </a>
+
+      <a class="feature-card" href="#">
+        <span class="feature-card__icon" aria-hidden="true">
+          <img src="assets/svg/icon-books.svg" alt="" />
+        </span>
+        <span class="feature-card__body">
+          <span class="feature-card__title">Knowledge Base</span>
+          <span class="feature-card__desc">Capture insights and build your personal knowledge library.</span>
+        </span>
+        <span class="feature-card__chevron" aria-hidden="true">›</span>
+      </a>
+    </section>
+  </main>
+
+  <script src="js/main.js" defer></script>
+</body>
+</html>

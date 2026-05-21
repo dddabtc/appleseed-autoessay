@@ -1,0 +1,29 @@
+{
+  "draft_version": "v001",
+  "mode": "soft_signal_no_auto_revision",
+  "scanned_at": "2026-05-04T11:00:00Z",
+  "scans": {
+    "ai_style": {
+      "raw_report_path": "integrity/vendor_raw/gptzero_smoke.json",
+      "scan_id": "gptzero_smoke",
+      "score": 0.42,
+      "span_count": 0,
+      "spans": [],
+      "status": "complete",
+      "vendor": "gptzero"
+    },
+    "plagiarism": {
+      "raw_report_path": "integrity/vendor_raw/none_skipped.json",
+      "scan_id": "skipped",
+      "score": null,
+      "span_count": 0,
+      "spans": [],
+      "status": "skipped_no_vendor",
+      "vendor": "none"
+    }
+  },
+  "span_counts": {
+    "ai_style": 0,
+    "plagiarism": 0
+  }
+}

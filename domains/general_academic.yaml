@@ -1,0 +1,91 @@
+id: general_academic
+display_name: General Academic
+version: "0.1.0"
+description: "Domain-agnostic template for users who need a neutral scholarly workflow starter."
+search:
+  telescope:
+    shortlist_limit: 20
+    deep_dive_limit: 14  # PR-G-Sources Stage 1: was implicit 6
+  sources:
+    - id: semantic_scholar
+      enabled: true
+      weight: 1.0
+      query_templates: ["{topic} scholarly literature", "{topic} systematic review"]
+    - id: openalex
+      enabled: true
+      weight: 0.95
+      topic_filter: false
+      # Filter intentionally absent: a generic academic domain shouldn't
+      # presuppose recency / OA-status / article-shape. The prior
+      # ``publication_year:>2018,is_oa:true,type:article`` filter
+      # destroyed canonical recall for any user whose topic's literature
+      # predates 2018 or lives in monographs / chapters. Discovered
+      # 2026-05-04 (codex J9 round-1 amendment 1). Curator + (future)
+      # J9 LLM rerank do the quality filtering.
+      query_templates: ["{topic} scholarly literature", "{topic} research evidence"]
+    - id: crossref
+      enabled: true
+      weight: 0.85
+      query_templates: ["{topic} journal article", "{topic} research evidence"]
+    - id: openreview
+      enabled: false
+      weight: 0.65
+      query_templates: ["{topic} peer review"]
+    - id: ssrn_manual
+      enabled: true
+      weight: 0.6
+      mode: manual_upload
+      query_templates: ["{topic} working paper"]
+  default_query_terms:
+    - scholarly literature
+    - review
+    - evidence
+    - methods
+    - debate
+  exclusion_terms:
+    - blog opinion
+    - product review
+ranking:
+  recency_window_years: 5
+  source_weights:
+    peer_reviewed_journal: 1.0
+    university_working_paper: 0.75
+    policy_report: 0.55
+literature:
+  policy:
+    include_working_papers: true
+    include_books: true
+    include_preprints: true
+    paywalled_policy: metadata_only
+  venue_weights: {}
+terms:
+  thesaurus:
+    evidence: ["findings", "results", "empirical support"]
+    debate: ["disagreement", "contestation", "open question"]
+    method: ["design", "approach", "identification"]
+journals:
+  targets:
+    - name: "General Academic Journal"
+      expected_length_words: [6000, 9000]
+      citation_style: chicago_author_date
+    - name: "Interdisciplinary Review"
+      expected_length_words: [5000, 8000]
+      citation_style: apa
+classification:
+  jel_codes: []
+citation:
+  style: chicago_author_date
+  require_page_for_direct_quote: true
+  density_target_per_1000_words: [4, 8]
+voice:
+  defaults:
+    register: "clear, scholarly, cautious"
+    hedge_policy: "hedge when source coverage is sparse or mixed"
+evidence:
+  minimum_consensus_sample: 30
+  skim_target_count: 150
+  shortlist_target_count: 16
+  deep_dive_target_count: 5
+  primary_source_policy: "Use the strongest available primary, empirical, or review evidence for the selected field."
+roundtable:
+  default_tier: Lite

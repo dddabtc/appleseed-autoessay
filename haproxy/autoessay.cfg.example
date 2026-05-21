@@ -1,0 +1,23 @@
+# Generic HAProxy example.
+#
+# Replace autoessay.example.invalid with your own hostname and place
+# the ACL block inside your public frontend. Append the backend blocks
+# at the end of the file.
+
+# --- inside frontend ---
+acl host_autoessay hdr(host) -i autoessay.example.invalid
+acl path_autoessay_api path_beg /api/ /sse/ /healthz /readyz /version /docs /openapi.json
+
+use_backend autoessay-api-backend if host_autoessay path_autoessay_api
+use_backend autoessay-web-backend if host_autoessay
+
+# --- backends ---
+backend autoessay-api-backend
+    option httpchk GET /healthz
+    http-check expect status 200
+    server autoessay-api 127.0.0.1:8017 check
+
+backend autoessay-web-backend
+    option httpchk GET /
+    http-check expect status 200
+    server autoessay-web 127.0.0.1:3017 check

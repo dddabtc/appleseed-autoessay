@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "run_id": "run_smoke_fixture",
+  "paper_mode": "case_analysis",
+  "project_title": "Smoke fixture — late-Qing Jiangnan imprints",
+  "kernel_template_label": "case_analysis-smoke-fixture",
+  "domain_id": "humanities_smoke",
+  "snapshotted_at": "2026-05-04T11:05:00Z",
+  "baseline_label": "case_analysis-smoke-fixture"
+}

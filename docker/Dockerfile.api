@@ -1,0 +1,38 @@
+FROM python:3.10-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV AUTOESSAY_STOP_SLOP_DIR=/app/stop_slop
+
+WORKDIR /app
+
+ARG STOP_SLOP_COMMIT=8da1f030185bdfe8471220585162991eaeb970e9
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates git \
+    && git init /app/stop_slop \
+    && cd /app/stop_slop \
+    && git remote add origin https://github.com/hardikpandya/stop-slop.git \
+    && git fetch --depth 1 origin "${STOP_SLOP_COMMIT}" \
+    && git checkout FETCH_HEAD \
+    && git rev-parse HEAD > /app/stop_slop/STOP_SLOP_COMMIT \
+    && rm -rf /app/stop_slop/.git \
+    && apt-get purge -y --auto-remove git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/pyproject.toml /app/backend/pyproject.toml
+COPY backend/src /app/backend/src
+COPY backend/data /app/backend/data
+COPY backend/alembic.ini /app/backend/alembic.ini
+COPY backend/alembic /app/backend/alembic
+COPY domains /app/domains
+
+RUN pip install --no-cache-dir -e /app/backend \
+    && python -m playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/backend
+
+EXPOSE 8017
+
+CMD ["uvicorn", "autoessay.main:app", "--host", "0.0.0.0", "--port", "8017"]

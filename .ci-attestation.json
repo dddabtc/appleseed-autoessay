@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "timestamp": "2026-05-21T13:58:33Z",
+  "result": "pass",
+  "test_log_sha256": "d8489c343599c5e53ca2e5a210390bfbc0c1a4ec4b66619a997a705aa39ae7b8",
+  "pytest_passed": 1859,
+  "vitest_passed": 208,
+  "playwright_passed": 0,
+  "ran_jobs": ["ruff_format","ruff_check","mypy","pytest","tsc","eslint","vitest"],
+  "tool_versions": {
+    "python": "3.10.12",
+    "node": "24.15.0"
+  },
+  "info_only_head_sha_at_sweep": "84aa77058b3df72cea0e056dc5ba9d8b7e36649e",
+  "info_only_tree_sha_at_sweep": "9dc87b5540d78d319de60c1ac52862c136274381"
+}

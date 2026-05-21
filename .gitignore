@@ -1,0 +1,78 @@
+# secrets
+.env
+.env.*
+!.env.example
+.ci-attestation.json
+
+# local agent / handoff notes
+.codex-*.md
+.claude-*.md
+.agents/
+.claude/
+.codex/
+HANDOFF.md
+docs/HANDOFF.md
+
+# logs / runtime
+*.log
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.sqlite
+*.sqlite-*
+*.sqlite3-*
+*.db
+*.db-*
+logs/
+runs/
+corpus/
+data/
+tmp/
+frontend/tmp/
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# node
+node_modules/
+dist/
+build/
+.next/
+.vite/
+*.tsbuildinfo
+
+# playwright
+frontend/playwright-report/
+frontend/test-results/
+frontend/.playwright-cache/
+frontend/public/help-assets/**/*.tmp
+docs/refactor/playwright-screens/
+**/playwright-screens/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# generated experiment / QA artifacts
+tmp/qa-artifacts/
+docs/experiments/**/results*/
+docs/experiments/**/blinded/
+docs/experiments/**/judge-*.json
+docs/experiments/**/judge-input-*
+docs/experiments/**/*.raw.txt
+docs/experiments/**/manuscript.md
+docs/experiments/**/provenance.json
+docs/experiments/**/blind_map.json
+docs/qa/

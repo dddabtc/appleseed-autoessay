@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Appleseed AutoEssay 登录</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="mobile-page" aria-label="Appleseed AutoEssay 中文登录页">
+      <header class="site-header">
+        <a class="brand" href="#" aria-label="Appleseed AutoEssay 首页">
+          <img src="./assets/logo.png" alt="" class="brand-logo" />
+          <span class="brand-name">Appleseed AutoEssay</span>
+        </a>
+
+        <nav class="header-actions" aria-label="页面操作">
+          <button class="language-button" type="button" aria-label="切换语言">
+            <span>中文</span>
+            <span class="chevron" aria-hidden="true"></span>
+          </button>
+          <button class="menu-button" type="button" aria-label="打开菜单">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </button>
+        </nav>
+      </header>
+
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-mark" aria-hidden="true">
+          <img src="./assets/svg/leaf.svg" alt="" />
+          <i></i>
+        </div>
+
+        <h1 id="hero-title">
+          <span>古典智慧</span>
+          <span>现代<strong>写作</strong></span>
+        </h1>
+
+        <p>
+          Appleseed AutoEssay 帮助学者与学生<br />
+          在 AI 协助下思考更深、写作更好、<br />
+          产出更多。
+        </p>
+      </section>
+
+      <div class="wisdom-card" aria-hidden="true">
+        <span class="wisdom-seal">智<br />学</span>
+        <div class="wisdom-columns">
+          <span>学<br />而<br />不<br />厌</span>
+          <span>为<br />道<br />日<br />损</span>
+        </div>
+        <div class="wisdom-ornament">
+          <img src="./assets/svg/leaf.svg" alt="" />
+        </div>
+      </div>
+
+      <section class="login-panel" aria-labelledby="login-title">
+        <div class="seed-badge" aria-hidden="true">
+          <img src="./assets/svg/sprout.svg" alt="" />
+        </div>
+
+        <h2 id="login-title">欢迎回来</h2>
+        <p class="login-subtitle">登录以继续使用 Appleseed AutoEssay</p>
+
+        <form class="login-form" action="#" method="post">
+          <label class="field">
+            <span class="field-icon user-icon" aria-hidden="true"></span>
+            <input type="text" name="username" placeholder="用户名" autocomplete="username" />
+          </label>
+
+          <label class="field">
+            <span class="field-icon lock-icon" aria-hidden="true"></span>
+            <input type="password" name="password" placeholder="密码" autocomplete="current-password" />
+            <button class="password-toggle" type="button" aria-label="显示或隐藏密码">
+              <span aria-hidden="true"></span>
+            </button>
+          </label>
+
+          <div class="form-options">
+            <label class="remember">
+              <input type="checkbox" name="remember" />
+              <span>记住我</span>
+            </label>
+            <a href="#">忘记密码？</a>
+          </div>
+
+          <button class="submit-button" type="submit">登录</button>
+        </form>
+
+        <div class="divider" aria-hidden="true">
+          <span>或使用以下方式继续</span>
+        </div>
+
+        <div class="social-login" aria-label="第三方登录">
+          <button class="social-button" type="button" aria-label="使用 Google 登录">
+            <img src="./assets/svg/oauth-google.svg" alt="" />
+          </button>
+          <button class="social-button microsoft" type="button" aria-label="使用 Microsoft 登录">
+            <img src="./assets/svg/oauth-microsoft.svg" alt="" />
+          </button>
+          <button class="social-button school" type="button" aria-label="使用机构账号登录">
+            <img src="./assets/svg/oauth-sso.svg" alt="" />
+          </button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

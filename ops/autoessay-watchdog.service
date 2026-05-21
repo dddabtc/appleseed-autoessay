@@ -1,0 +1,10 @@
+[Unit]
+Description=Appleseed AutoEssay Watchdog
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/appleseed-autoessay
+EnvironmentFile=-/opt/appleseed-autoessay/.env
+ExecStart=/opt/appleseed-autoessay/ops/watchdog.sh

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- 文档 -->
+  <rect x="5" y="3" width="18" height="22" rx="2" stroke="#2f5d3a" stroke-width="1.6" fill="#fff"/>
+  <line x1="9" y1="9" x2="19" y2="9" stroke="#2f5d3a" stroke-width="1.4"/>
+  <line x1="9" y1="13" x2="19" y2="13" stroke="#2f5d3a" stroke-width="1.4"/>
+  <line x1="9" y1="17" x2="15" y2="17" stroke="#2f5d3a" stroke-width="1.4"/>
+  <!-- 放大镜 -->
+  <circle cx="22" cy="22" r="5" stroke="#2f5d3a" stroke-width="1.8" fill="#fff"/>
+  <line x1="26" y1="26" x2="30" y2="30" stroke="#2f5d3a" stroke-width="2" stroke-linecap="round"/>
+</svg>
