@@ -1,0 +1,85 @@
+name: deploy
+
+on:
+  workflow_run:
+    workflows: ["build"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy"
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Resolve image tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to GHCR on deploy host
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | ssh -o StrictHostKeyChecking=accept-new "$PROD_USER@$PROD_HOST" \
+            "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+
+      - name: Deploy over SSH
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_cmd=$(printf 'cd %q && git pull --ff-only && ./ops/deploy.sh %q' "$PROD_DEPLOY_PATH" "$IMAGE_TAG")
+          ssh -o StrictHostKeyChecking=accept-new "$PROD_USER@$PROD_HOST" "$remote_cmd"
+
+      - name: Post-deploy smoke
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_HEALTHCHECK_URL: ${{ secrets.PROD_HEALTHCHECK_URL }}
+          PROD_FRONTEND_URL: ${{ secrets.PROD_FRONTEND_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$PROD_HEALTHCHECK_URL" && -z "$PROD_FRONTEND_URL" ]]; then
+            echo "No smoke URLs configured; skipping remote smoke check."
+            exit 0
+          fi
+          if [[ -n "$PROD_HEALTHCHECK_URL" ]]; then
+            ssh -o StrictHostKeyChecking=accept-new "$PROD_USER@$PROD_HOST" \
+              "curl --fail --silent --show-error $(printf '%q' "$PROD_HEALTHCHECK_URL") >/dev/null"
+            echo "api_ok"
+          fi
+          if [[ -n "$PROD_FRONTEND_URL" ]]; then
+            ssh -o StrictHostKeyChecking=accept-new "$PROD_USER@$PROD_HOST" \
+              "curl --fail --silent --show-error $(printf '%q' "$PROD_FRONTEND_URL") >/dev/null"
+            echo "frontend_ok"
+          fi
