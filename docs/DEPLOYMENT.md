@@ -49,6 +49,9 @@ GitHub repo Settings -> Secrets and variables -> Actions:
 - `PROD_SSH_KEY`: Private SSH key that can connect to the deploy target.
 - `PROD_DEPLOY_PATH`: Remote directory that contains the checked-out app and
   Docker Compose files.
+- `GHCR_WRITE_TOKEN`: Optional token with package write access for build and
+  release workflows if the default `GITHUB_TOKEN` is not authorized to write
+  the existing GHCR packages.
 - `GHCR_READ_TOKEN`: Optional token with package read access if the default
   `GITHUB_TOKEN` cannot pull from GHCR in your setup.
 - `PROD_HEALTHCHECK_URL`: Optional API health URL reachable from the deploy
@@ -59,3 +62,8 @@ GitHub repo Settings -> Secrets and variables -> Actions:
 Do not put real hostnames, private IPs, credentials, private network names, or
 provider-specific secrets in workflow YAML. Keep those values in GitHub Secrets
 or in the deployment target's local environment files.
+
+For GHCR, either grant this repository write access to the container packages
+or configure `GHCR_WRITE_TOKEN`. A 403 during image push usually means the
+workflow is wired correctly but the package permission or token scope is
+missing.
