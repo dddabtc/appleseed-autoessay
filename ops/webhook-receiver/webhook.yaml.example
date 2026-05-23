@@ -1,0 +1,29 @@
+- id: appleseed-autoessay-main
+  execute-command: /opt/appleseed-autoessay/webhook-receiver/deploy.sh
+  command-working-directory: /opt/appleseed-autoessay/source
+  http-methods:
+    - POST
+  include-command-output-in-response: false
+  success-http-response-code: 202
+  response-message: accepted
+  trigger-rule-mismatch-http-response-code: 403
+  trigger-rule:
+    and:
+      - match:
+          type: payload-hmac-sha256
+          secret: '{{ getenv "AUTOESSAY_GITHUB_WEBHOOK_SECRET" }}'
+          parameter:
+            source: header
+            name: X-Hub-Signature-256
+      - match:
+          type: value
+          value: push
+          parameter:
+            source: header
+            name: X-GitHub-Event
+      - match:
+          type: value
+          value: refs/heads/main
+          parameter:
+            source: payload
+            name: ref

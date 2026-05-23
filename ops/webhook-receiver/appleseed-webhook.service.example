@@ -1,0 +1,23 @@
+[Unit]
+Description=appleseed-autoessay GitHub webhook receiver
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=autoessay
+Group=autoessay
+SupplementaryGroups=docker
+EnvironmentFile=/etc/autoessay-webhook.env
+ExecStartPre=/bin/sh -c 'test -n "$AUTOESSAY_GITHUB_WEBHOOK_SECRET"'
+ExecStart=/usr/bin/webhook -hooks /opt/appleseed-autoessay/webhook-receiver/webhook.yaml -template -ip 127.0.0.1 -port 9000 -http-methods POST -verbose
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/appleseed-autoessay/source /opt/appleseed-autoessay/webhook-receiver /var/log/appleseed-autoessay /tmp
+
+[Install]
+WantedBy=multi-user.target
