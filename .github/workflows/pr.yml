@@ -1,0 +1,66 @@
+name: pr
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  attestation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify .ci-attestation.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f .ci-attestation.json ]; then
+            echo "::error::missing .ci-attestation.json at repo root"
+            echo "Run backend/scripts/ci-local.sh and amend the result into HEAD before push."
+            exit 1
+          fi
+          RESULT=$(jq -r .result .ci-attestation.json)
+          if [ "$RESULT" != "pass" ]; then
+            echo "::error::attestation result='$RESULT' (expected 'pass')"
+            exit 1
+          fi
+          TS=$(jq -r .timestamp .ci-attestation.json)
+          AGE=$(( $(date +%s) - $(date -d "$TS" +%s) ))
+          if [ "$AGE" -ge 21600 ]; then
+            echo "::error::attestation timestamp '$TS' is older than 6h (age=${AGE}s)"
+            echo "Re-run backend/scripts/ci-local.sh and re-push."
+            exit 1
+          fi
+          PYTEST=$(jq -r .pytest_passed .ci-attestation.json)
+          VITEST=$(jq -r .vitest_passed .ci-attestation.json)
+          PLAYWRIGHT=$(jq -r .playwright_passed .ci-attestation.json)
+          PYV=$(jq -r '.tool_versions.python' .ci-attestation.json)
+          NODEV=$(jq -r '.tool_versions.node' .ci-attestation.json)
+          INFO_HEAD=$(jq -r '.info_only_head_sha_at_sweep // "unknown"' .ci-attestation.json)
+          echo "attestation valid"
+          echo "  age:               ${AGE}s"
+          echo "  pytest_passed:     $PYTEST"
+          echo "  vitest_passed:     $VITEST"
+          echo "  playwright_passed: $PLAYWRIGHT"
+          echo "  python_version:    $PYV"
+          echo "  node_version:      $NODEV"
+          echo "  sweep_head_sha:    $INFO_HEAD (informational, not enforced)"
+
+  guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secret scan
+        run: scripts/secret-scan.sh
+
+      - name: .env absence check
+        shell: bash
+        run: |
+          if find . -path ./.git -prune -o -type f \( -name '.env' -o -name '.env.*' \) -print | grep -v '^\./\.env\.example$'; then
+            echo "Committed .env file found" >&2
+            exit 1
+          fi

@@ -1,0 +1,103 @@
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
+
+jobs:
+  retag-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag and target SHA
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          SHA=$(git rev-list -n 1 "$TAG")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Validate tag matches package versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY_VERSION=$(grep -E '^version *= *' backend/pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          NPM_VERSION=$(jq -r '.version' frontend/package.json)
+          if [[ "$PY_VERSION" != "${{ steps.meta.outputs.version }}" ]]; then
+            echo "Tag ${{ steps.meta.outputs.tag }} disagrees with backend/pyproject.toml ($PY_VERSION)" >&2
+            exit 1
+          fi
+          if [[ "$NPM_VERSION" != "${{ steps.meta.outputs.version }}" ]]; then
+            echo "Tag ${{ steps.meta.outputs.tag }} disagrees with frontend/package.json ($NPM_VERSION)" >&2
+            exit 1
+          fi
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag SHA images to release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          for image in appleseed-autoessay-api appleseed-autoessay-frontend; do
+            src="ghcr.io/dddabtc/${image}:${{ steps.meta.outputs.sha }}"
+            dst="ghcr.io/dddabtc/${image}:${{ steps.meta.outputs.tag }}"
+            docker manifest inspect "$src" >/dev/null
+            docker pull "$src"
+            docker tag "$src" "$dst"
+            docker push "$dst"
+          done
+
+      - name: Compose release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREV_TAG=$(git describe --tags --abbrev=0 "${{ steps.meta.outputs.tag }}^" 2>/dev/null || echo "")
+          if [[ -n "$PREV_TAG" ]]; then
+            PREV_DATE=$(git log -1 --format=%cI "$PREV_TAG")
+            CURR_DATE=$(git log -1 --format=%cI "${{ steps.meta.outputs.tag }}^{commit}")
+            {
+              echo "## Changes since $PREV_TAG"
+              echo
+              gh pr list --state merged --base main --limit 200 \
+                --search "merged:>$PREV_DATE merged:<=$CURR_DATE" \
+                --json number,title,mergedAt \
+                --jq 'sort_by(.mergedAt)[] | "- #\(.number) \(.title)"'
+              echo
+              echo "See CHANGELOG.md for the full curated list."
+            } > release_notes.md
+          else
+            {
+              echo "## Bootstrap release"
+              echo
+              echo "See CHANGELOG.md for the bootstrap release contents."
+            } > release_notes.md
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            --title "${{ steps.meta.outputs.tag }}" \
+            --notes-file release_notes.md \
+            --verify-tag

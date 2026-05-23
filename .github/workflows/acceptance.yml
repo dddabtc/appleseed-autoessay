@@ -1,0 +1,102 @@
+name: acceptance
+
+on:
+  pull_request:
+    paths:
+      - "backend/src/autoessay/**"
+      - "backend/scripts/**"
+      - "backend/baselines/**"
+      - "backend/pyproject.toml"
+      - "domains/**"
+      - ".github/workflows/acceptance.yml"
+      - "frontend/scripts/run-local-mirror.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  evaluator-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install backend
+        run: pip install -e "backend[dev]"
+
+      - name: Find confirmed baselines
+        id: find
+        shell: bash
+        run: |
+          set -euo pipefail
+          confirmed=$(find backend/baselines -name USER_CONFIRMED -not -path "*/_*/*" -exec dirname {} \;)
+          echo "list<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$confirmed" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          if [ -z "$confirmed" ]; then
+            echo "No confirmed baselines yet."
+          else
+            echo "Confirmed baselines:"
+            echo "$confirmed"
+          fi
+
+      - name: Re-evaluate confirmed baselines
+        if: steps.find.outputs.list != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/acceptance
+          : > /tmp/acceptance/report.md
+          overall_rc=0
+          while IFS= read -r bundle; do
+            [ -z "$bundle" ] && continue
+            python backend/scripts/evaluate_paper.py \
+              "$bundle" --output "/tmp/acceptance/$(basename "$bundle")_pr.json"
+            if ! python backend/scripts/diff_baselines.py \
+                --baseline "$bundle/evaluator.json" \
+                --candidate "/tmp/acceptance/$(basename "$bundle")_pr.json" \
+                --exit-fail-on-fail \
+                >> /tmp/acceptance/report.md; then
+              overall_rc=1
+            fi
+            echo "" >> /tmp/acceptance/report.md
+          done <<< "${{ steps.find.outputs.list }}"
+          exit $overall_rc
+
+      - name: Skeleton-stage advisory report
+        if: steps.find.outputs.list == ''
+        shell: bash
+        run: |
+          mkdir -p /tmp/acceptance
+          cat > /tmp/acceptance/report.md <<'EOF'
+          ### acceptance gate - skeleton stage
+
+          No confirmed baselines exist yet (`backend/baselines/<paper_mode>/<id>/USER_CONFIRMED` missing for every bundle). The acceptance gate is currently a no-op advisory; it will start producing diffs once the first user-confirmed baseline lands.
+          EOF
+
+      - name: Comment PR with acceptance report
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '/tmp/acceptance/report.md';
+            if (!fs.existsSync(path)) {
+              return;
+            }
+            const body = fs.readFileSync(path, 'utf8');
+            if (!body.trim()) {
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
