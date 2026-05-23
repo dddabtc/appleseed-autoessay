@@ -8820,13 +8820,19 @@ def _project_has_any_run_subq() -> Any:
 def _count_active_essays(session: Session, user_id: str) -> int:
     """Count of essays that consume a slot for ``user_id``.
 
-    Active = ``Project.deleted_at IS NULL`` AND either no run has ever
-    existed yet, or the latest non-deleted run is not in
-    :data:`LIMIT_TERMINAL_STATES`. If all runs have been soft-deleted,
-    the project no longer consumes a run-workflow slot.
+    Active = ``Project.deleted_at IS NULL`` AND either:
+    - the project has no run yet AND was created within the recent
+      grace window (so a freshly-opened New Run page still counts),
+    - or the latest non-deleted run is not in
+      :data:`LIMIT_TERMINAL_STATES`.
+
+    Projects that were created but never had a run kicked off used to
+    consume a slot forever, which made the limit feel inflated. They
+    now stop consuming a slot after 24h with no run.
     """
     latest = _latest_run_state_subq()
     any_run = _project_has_any_run_subq()
+    grace_cutoff = utcnow() - timedelta(hours=24)
     stmt = (
         select(func.count(Project.id))
         .select_from(Project)
@@ -8835,7 +8841,7 @@ def _count_active_essays(session: Session, user_id: str) -> int:
         .where(Project.user_id == user_id)
         .where(Project.deleted_at.is_(None))
         .where(
-            (any_run.c.project_id.is_(None))
+            (any_run.c.project_id.is_(None) & (Project.created_at >= grace_cutoff))
             | (
                 latest.c.latest_state.is_not(None)
                 & (~latest.c.latest_state.in_(LIMIT_TERMINAL_STATES))
